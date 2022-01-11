@@ -253,14 +253,18 @@ public Action Command_GetItem(int client, int args)
 	char arg3[32];
 	GetCmdArg(3, arg3, sizeof(arg3));
 	int effect = StringToInt(arg3);		
+
+	char arg4[32];
+	GetCmdArg(4, arg4, sizeof(arg4));
+	int paint = StringToInt(arg4);	
 	
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: !gimme <index number>");
-		ReplyToCommand(client, "or gimme <index number> <0> <unusual effect number>");		
+		ReplyToCommand(client, "or gimme <index number> <0> <unusual effect number> <paint id>");		
 		ReplyToCommand(client, "or gimme <warpaintable weapon id> <warpaint id>");		
 		ReplyToCommand(client, "examples: !gimmme 205  or  !gimme 666  or  !gimme 205 200"); 
-		ReplyToCommand(client, "for list of index numbers type: !index"); 
+		ReplyToCommand(client, "for list of index numbers type: !index. Paint Ids are 1-29"); 
 
 		return Plugin_Handled; 		
 	}
@@ -341,7 +345,22 @@ public Action Command_GetItem(int client, int args)
 		ReplyToCommand(client, "[SM] Gimme item index number must be under 40000.");
 		
 		return Plugin_Handled;
-	}	
+	}
+
+	if (paint > 29)
+	{
+		ReplyToCommand(client, "[SM] Invalid paint id. Valid paint ids are 0 thru 29");
+	}
+
+	if (paint < 0)
+	{
+		paint = 0;
+	}
+	
+	if (effect < 0)
+	{
+		effect = 0;
+	}
 
 	if (wpaint > 0)
 	{
@@ -359,25 +378,28 @@ public Action Command_GetItem(int client, int args)
 
 			return Plugin_Handled; 		
 		}
-		if (effect < 0)
-		{
-			effect = 0;
-		}
 		
-		EquipItemByItemIndex(client, itemindex, wpaint, effect);
+		EquipItemByItemIndex(client, itemindex, wpaint, effect, paint);
 		
 		return Plugin_Handled;		
 	}
 	
-	if (effect > 0)
+	if (wpaint < 0)
 	{
-		EquipItemByItemIndex(client, itemindex, wpaint, effect);
+		wpaint = 0;
 	}
 	
-	else
+	if (paint < 0)
 	{
-		EquipItemByItemIndex(client, itemindex);
+		paint = 0;
 	}
+
+	if (paint > 29)
+	{
+		ReplyToCommand(client, "Paint id must be a number 0 thru 29");
+	}
+	
+	EquipItemByItemIndex(client, itemindex, wpaint, effect, paint);
 	
 	return Plugin_Handled;
 }
@@ -395,9 +417,9 @@ public Action Command_GiveItem(int client, int args)
 	{
 		ReplyToCommand(client, "[SM] Usage: giveitem <target> <item index number>");
 		ReplyToCommand(client, "or giveitem <target> <warpaintable weapon index number> <warpaint id>");		
-		ReplyToCommand(client, "or giveitem <target> <index number> <0> <unusual effect number>");		
+		ReplyToCommand(client, "or giveitem <target> <index number> <0> <unusual effect number> <paint id>");		
 		ReplyToCommand(client, "examples: !giveitem @all 666  or  !giveitem robert 205 303  or !giveitem sally 666 0 13"); 
-		ReplyToCommand(client, "for list of index numbers type: !index"); 		
+		ReplyToCommand(client, "valid paint ids are 1 thru 29. For list of index numbers type: !index   "); 		
 	}
 	
 	char arg2[32];
@@ -411,6 +433,10 @@ public Action Command_GiveItem(int client, int args)
 	char arg4[32];
 	GetCmdArg(4, arg4, sizeof(arg4));
 	int effect = StringToInt(arg4);		
+
+	char arg5[32];
+	GetCmdArg(5, arg5, sizeof(arg5));
+	int paint = StringToInt(arg5);	
 
 	int trieweaponSlot;
 	char formatBuffer[32];
@@ -456,6 +482,16 @@ public Action Command_GiveItem(int client, int args)
 	{
 		wpaint = 0;
 	}
+	
+	if (paint < 1)
+	{
+		paint = 0;
+	}
+
+	if (paint > 29)
+	{
+		ReplyToCommand(client, "[SM] Invalid paint id. Valid paint ids are 0 thru 29");
+	}	
 
 	char arg[65];
 	GetCmdArg(1, arg, sizeof(arg));
@@ -486,9 +522,9 @@ public Action Command_GiveItem(int client, int args)
 		}
 		else
 		{
-			EquipItemByItemIndex(target_list[i], itemindex, wpaint, effect);
-			LogAction(client, target_list[i], "\"%L\" gave \"%L\" item %i with warpaint %i and effect %i", client, target_list[i], itemindex, wpaint, effect);
-			ReplyToCommand(client, "[SM] Gave %N item %i with warpaint %i and effect %i", target_list[i], itemindex, wpaint, effect);
+			EquipItemByItemIndex(target_list[i], itemindex, wpaint, effect, paint);
+			LogAction(client, target_list[i], "\"%L\" gave \"%L\" item %i with warpaint %i, effect %i, and paint %i", client, target_list[i], itemindex, wpaint, effect, paint);
+			ReplyToCommand(client, "[SM] Gave %N item %i with warpaint %i, effect %i, and paint %i", target_list[i], itemindex, wpaint, effect, paint);
 		}
 	}
 	
@@ -563,7 +599,7 @@ public Action Command_GiveItemPerm(int client, int args)
 		wpaint = 0;
 	}
 
-	char arg[65];
+	char arg[32];
 	GetCmdArg(1, arg, sizeof(arg));
 	char target_name[MAX_TARGET_LENGTH];
 	int target_list[MAXPLAYERS], target_count;
@@ -1065,7 +1101,7 @@ public Action Command_RemoveItemPerm(int client, int args)
 
 Action Command_Permanent_Items_List(int client, int args)
 {
-	ReplyToCommand(client, "[SM] Debug: Player %N is Classtype %i with the following %i permanent items:", client, g_iPermClass[client], g_iHasPermItems[client]);
+	ReplyToCommand(client, "[SM] Player %N is Classtype %i with the following %i permanent items:", client, g_iPermClass[client], g_iHasPermItems[client]);
 	
 	for (int i = 1; i < g_iHasPermItems[client]+1; i++)
 	{
@@ -1075,7 +1111,7 @@ Action Command_Permanent_Items_List(int client, int args)
 	return Plugin_Handled;
 }	
 
-void EquipItemByItemIndex(int client, int itemindex, int warpaint = 0, int effect = 0)
+void EquipItemByItemIndex(int client, int itemindex, int warpaint = 0, int effect = 0, int paint = 0)
 {
 	if (!TF2Econ_IsValidItemDefinition(itemindex))
 	{
@@ -1108,12 +1144,12 @@ void EquipItemByItemIndex(int client, int itemindex, int warpaint = 0, int effec
 		}
 	}
 	
-	Items_CreateNamedItem(client, itemindex, itemClassname, itemLevel, itemQuality, itemSlot, warpaint, effect);
+	Items_CreateNamedItem(client, itemindex, itemClassname, itemLevel, itemQuality, itemSlot, warpaint, effect, paint);
 	
 	return;
 }
 
-int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int level, int quality, int weaponSlot, int warpaint, int effect)
+int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int level, int quality, int weaponSlot, int warpaint, int effect, int paint)
 {
 	int newitem = CreateEntityByName(classname);
 	
@@ -1263,6 +1299,158 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 	{
 		TF2Attrib_SetByDefIndex(newitem, 725, 0.0);
 	}
+	
+	if (paint > 0)
+	{
+		switch(paint)
+		{
+		case 1:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 3100495.0); //A color similar to slate
+				TF2Attrib_SetByDefIndex(newitem, 261, 3100495.0);
+			}
+		case 2:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 8208497.0); //A deep commitment to purple
+				TF2Attrib_SetByDefIndex(newitem, 261, 8208497.0);
+			}
+		case 3:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 1315860.0); //A distinctive lack of hue
+				TF2Attrib_SetByDefIndex(newitem, 261, 1315860.0);
+			}
+		case 4:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 12377523.0); //A mann's mint
+				TF2Attrib_SetByDefIndex(newitem, 261, 12377523.0);
+			}
+		case 5:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 2960676.0); //After eight
+				TF2Attrib_SetByDefIndex(newitem, 261, 2960676.0);
+			}
+		case 6:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 8289918.0); //Aged Moustache Grey
+				TF2Attrib_SetByDefIndex(newitem, 261, 8289918.0);
+			}
+		case 7:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 15132390.0); //An Extraordinary abundance of tinge
+				TF2Attrib_SetByDefIndex(newitem, 261, 15132390.0);
+			}
+		case 8:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 15185211.0); //Australium gold
+				TF2Attrib_SetByDefIndex(newitem, 261, 15185211.0);
+			}
+		case 9:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 14204632.0); //Color no 216-190-216
+				TF2Attrib_SetByDefIndex(newitem, 261, 14204632.0);
+			}
+		case 10:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 15308410.0); //Dark salmon injustice
+				TF2Attrib_SetByDefIndex(newitem, 261, 15308410.0);
+			}
+		case 11:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 8421376.0); //Drably olive
+				TF2Attrib_SetByDefIndex(newitem, 261, 8421376.0);
+			}
+		case 12:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 7511618.0); //Indubitably green
+				TF2Attrib_SetByDefIndex(newitem, 261, 7511618.0);
+			}
+		case 13:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 13595446.0); //Mann co orange
+				TF2Attrib_SetByDefIndex(newitem, 261, 13595446.0);
+			}
+		case 14:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 10843461.0); //Muskelmannbraun
+				TF2Attrib_SetByDefIndex(newitem, 261, 10843461.0);
+			}
+		case 15:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 5322826.0); //Noble hatters violet
+				TF2Attrib_SetByDefIndex(newitem, 261, 5322826.0);
+			}
+		case 16:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 12955537.0); //Peculiarly drab tincture
+				TF2Attrib_SetByDefIndex(newitem, 261, 12955537.0);
+			}
+		case 17:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 16738740.0); //Pink as hell
+				TF2Attrib_SetByDefIndex(newitem, 261, 16738740.0);
+			}
+		case 18:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 6901050.0); //Radigan conagher brown
+				TF2Attrib_SetByDefIndex(newitem, 261, 6901050.0);
+			}
+		case 19:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 3329330.0); //A bitter taste of defeat and lime
+				TF2Attrib_SetByDefIndex(newitem, 261, 3329330.0);
+			}
+		case 20:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 15787660.0); //The color of a gentlemanns business pants
+				TF2Attrib_SetByDefIndex(newitem, 261, 15787660.0);
+			}
+		case 21:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 8154199.0); //Ye olde rustic colour
+				TF2Attrib_SetByDefIndex(newitem, 261, 8154199.0);
+			}
+		case 22:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 4345659.0); //Zepheniahs greed
+				TF2Attrib_SetByDefIndex(newitem, 261, 4345659.0);
+			}
+		case 23:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 6637376.0); //An air of debonair
+				TF2Attrib_SetByDefIndex(newitem, 261, 2636109.0);
+			}
+		case 24:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 3874595.0); //Balaclavas are forever
+				TF2Attrib_SetByDefIndex(newitem, 261, 1581885.0);
+			}
+		case 25:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 12807213.0); //Cream spirit
+				TF2Attrib_SetByDefIndex(newitem, 261, 12091445.0);
+			}
+		case 26:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 4732984.0); //Operators overalls
+				TF2Attrib_SetByDefIndex(newitem, 261, 3686984.0);
+			}
+		case 27:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 12073019.0); //Team spirit
+				TF2Attrib_SetByDefIndex(newitem, 261, 5801378.0);
+			}
+		case 28:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 8400928.0); //The value of teamwork
+				TF2Attrib_SetByDefIndex(newitem, 261, 2452877.0);
+			}
+		case 29:
+			{
+				TF2Attrib_SetByDefIndex(newitem, 142, 11049612.0); //Waterlogged lab coat
+				TF2Attrib_SetByDefIndex(newitem, 261, 8626083.0);
+			}
+		}
+	}	
 
 	DispatchSpawn(newitem);
 	
@@ -1440,7 +1628,7 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 
 	char itemname[64];
 	TF2Econ_GetItemName(itemindex, itemname, sizeof(itemname));
-	PrintToChat(client, "%N received item %d (%s)", client, itemindex, itemname);
+	PrintToChat(client, "%N received item %d, %s, warpaint: %i, effect: %i, paint: %i", client, itemindex, itemname, warpaint, effect, paint);
 	
 	return newitem;
 } 
@@ -1803,20 +1991,47 @@ stock Action ListWeapons(int client, int target)
 
 			if (ent != -1)
 			{
+				float warpaint = 0.0;
+				int effect = 0;
 				int index = GetEntProp(ent, Prop_Send, "m_iItemDefinitionIndex");
 				char itemname[64];
 				TF2Econ_GetItemName(index, itemname, sizeof(itemname));
 				int weapon = GetPlayerWeaponSlot(target, slot);
+
 				Address pAttrib = TF2Attrib_GetByDefIndex(weapon, 834);
 				if (IsValidAddress(view_as<Address>(pAttrib)))
 				{
-					float warpaint = TF2Attrib_GetValue(pAttrib);
-					PrintToChat(client, "slot: %i, index: %i, item name: %s, warpaint: %i", slot, index, itemname, warpaint);
+					warpaint = TF2Attrib_GetValue(pAttrib);
 				}
 				else
 				{
-					PrintToChat(client, "slot: %i, index: %i, item name: %s", slot, index, itemname);
+					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
 				}
+				
+				if (warpaint < 0)
+				{
+					warpaint = 0.0;
+				}
+				
+				Address pAttrib2 = TF2Attrib_GetByDefIndex(weapon, 134);
+				if (IsValidAddress(view_as<Address>(pAttrib2)))
+				{
+					float raweffect = TF2Attrib_GetValue(pAttrib2);
+					char ConvertEffect[32];
+					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
+					effect = StringToInt(ConvertEffect);	
+				}
+				else
+				{
+					effect = view_as<int>(TF2_GetRuntimeAttribValue(weapon, 134));				
+				}
+
+				if (effect < 0)
+				{
+					effect = 0;
+				}				
+
+				PrintToChat(client, "slot: %i, index: %i, %s, warpaint: %i, effect: %i", slot, index, itemname, view_as<int>(warpaint), view_as<int>(effect));
 			}
 		}
 	}
@@ -1834,6 +2049,9 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 			{
 				if (GetEntPropEnt(edict, Prop_Send, "m_hOwnerEntity") == target)
 				{
+					int effect = 0;
+					float rawpaint = 0.0;
+					int paint = 0;
 					int index = GetEntProp(edict, Prop_Send, "m_iItemDefinitionIndex");
 					int slot = TF2Econ_GetItemDefaultLoadoutSlot(edict);
 					if (TF2Econ_GetItemLoadoutSlot(index, TF2_GetPlayerClass(target)) !=-1)
@@ -1847,13 +2065,41 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 					Address pAttrib = TF2Attrib_GetByDefIndex(edict, 134);
 					if (IsValidAddress(view_as<Address>(pAttrib)))
 					{
-						float effect = TF2Attrib_GetValue(pAttrib);
-						PrintToChat(client, "slot: %i, index: %i, item name: %s, effect: %.0f", slot, index, itemname, effect);
+						float raweffect = TF2Attrib_GetValue(pAttrib);
+						char ConvertEffect[32];
+						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
+						effect = StringToInt(ConvertEffect);	
+					}
+					else
+					{
+						effect = view_as<int>(TF2_GetRuntimeAttribValue(edict, 134));
+					}
+					
+					Address pAttrib2 = TF2Attrib_GetByDefIndex(edict, 142);
+					if (IsValidAddress(view_as<Address>(pAttrib2)))
+					{
+						rawpaint = TF2Attrib_GetValue(pAttrib2);
 					}					
 					else
 					{
-						PrintToChat(client, "slot: %i, index: %i, item name: %s", slot, index, itemname);
+						rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
 					}
+		
+					if (rawpaint > 0)
+					{
+						paint = Translate_Paint(rawpaint);
+					}
+					
+					if (effect < 0)
+					{
+						effect = 0;
+					}
+					if (paint < 0)
+					{
+						paint = 0;
+					}					
+
+					PrintToChat(client, "slot: %i, index: %i, %s, effect: %i, paint: %i", slot, index, itemname, view_as<int>(effect), paint);
 				}
 			}
 		}
@@ -1901,10 +2147,20 @@ stock Action CloneWeapons(int client, int target)
 				int effect = 0;
 				int index = GetEntProp(ent, Prop_Send, "m_iItemDefinitionIndex");
 				int weapon = GetPlayerWeaponSlot(target, slot);
+
 				Address pAttrib = TF2Attrib_GetByDefIndex(weapon, 834);
 				if (IsValidAddress(view_as<Address>(pAttrib)))
 				{
 					warpaint = TF2Attrib_GetValue(pAttrib);
+				}
+				else
+				{
+					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
+				}
+				
+				if (warpaint < 0)
+				{
+					warpaint = 0.0;
 				}
 				
 				Address pAttrib2 = TF2Attrib_GetByDefIndex(weapon, 134);
@@ -1914,9 +2170,18 @@ stock Action CloneWeapons(int client, int target)
 					char ConvertEffect[32];
 					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
 					effect = StringToInt(ConvertEffect);	
-				}				
+				}
+				else
+				{
+					effect = view_as<int>(TF2_GetRuntimeAttribValue(weapon, 134));				
+				}
 				
-				EquipItemByItemIndex(client, index, view_as<int>(warpaint), effect);	
+				if (effect < 0)
+				{
+					effect = 0;
+				}
+				
+				EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect));	
 			}
 		}
 	}
@@ -1937,19 +2202,52 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 					int index = GetEntProp(edict, Prop_Send, "m_iItemDefinitionIndex");
 					if (index != -1 && index < 65535)
 					{
+						float rawpaint = 0.0;
+						int warpaint = 0;
+						int effect = 0;
+						int paint = 0;
+
+						char itemname[64];
+						TF2Econ_GetItemName(index, itemname, sizeof(itemname));
+						
 						Address pAttrib = TF2Attrib_GetByDefIndex(edict, 134);
 						if (IsValidAddress(view_as<Address>(pAttrib)))
 						{
 							float raweffect = TF2Attrib_GetValue(pAttrib);
 							char ConvertEffect[32];
 							Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
-							int effect = StringToInt(ConvertEffect);	
-							EquipItemByItemIndex(client, index, 0, effect);
+							effect = StringToInt(ConvertEffect);	
 						}
 						else
 						{
-							EquipItemByItemIndex(client, index);
+							effect = view_as<int>(TF2_GetRuntimeAttribValue(edict, 134));
 						}
+						
+						Address pAttrib2 = TF2Attrib_GetByDefIndex(edict, 142);
+						if (IsValidAddress(view_as<Address>(pAttrib2)))
+						{
+							rawpaint = TF2Attrib_GetValue(pAttrib2);
+						}					
+						else
+						{
+							rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
+						}
+			
+						if (rawpaint > 0)
+						{
+							paint = Translate_Paint(rawpaint);
+						}
+						
+						if (effect < 0)
+						{
+							effect = 0;
+						}
+						if (paint < 0)
+						{
+							paint = 0;
+						}
+
+						EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect), paint);
 					}
 				}
 			}
@@ -2039,4 +2337,155 @@ stock void RemoveAllWeapons(int client)
 			}
 		}
 	}
+}
+
+stock int Translate_Paint(float rawpaint) 
+{
+	if (rawpaint > 0.0)
+	{
+		switch(rawpaint)
+		{
+		case 3100495.0:
+			{
+				return 1; //"A color similar to slate";
+			}
+		case 8208497.0:
+			{
+				return 2; //A deep commitment to purple
+			}
+		case 1315860.0:
+			{
+				return 3; //A distinctive lack of hue
+			}
+		case 12377523.0:
+			{
+				return 4; //A mann's mint
+			}
+		case 2960676.0:
+			{
+				return 5; //After eight
+			}
+		case 8289918.0:
+			{
+				return 6; //Aged Moustache Grey
+			}
+		case 15132390.0:
+			{
+				return 7; //An Extraordinary abundance of tinge
+			}
+		case 15185211.0:
+			{
+				return 8; //Australium gold
+			}
+		case 14204632.0:
+			{
+				return 9; //Color no 216-190-216
+			}
+		case 15308410.0:
+			{
+				return 10; //Dark salmon injustice
+			}
+		case 8421376.0:
+			{
+				return 11; //Drably olive
+			}
+		case 7511618.0:
+			{
+				return 12; //Indubitably green
+			}
+		case 13595446.0:
+			{
+				return 13; //Mann co orange
+			}
+		case 10843461.0:
+			{
+				return 14; //Muskelmannbraun
+			}
+		case 5322826.0:
+			{
+				return 15; //Noble hatters violet
+			}
+		case 12955537.0:
+			{
+				return 16; //Peculiarly drab tincture
+			}
+		case 16738740.0:
+			{
+				return 17; //Pink as hell
+			}
+		case 6901050.0:
+			{
+				return 18; //Radigan conagher brown
+			}
+		case 3329330.0:
+			{
+				return 19; //A bitter taste of defeat and lime
+			}
+		case 15787660.0:
+			{
+				return 20; //The color of a gentlemanns business pants
+			}
+		case 8154199.0:
+			{
+				return 21; //Ye olde rustic colour
+			}
+		case 4345659.0:
+			{
+				return 22; //Zepheniahs greed
+			}
+		case 6637376.0:
+			{
+				return 23; //An air of debonair
+			}
+		case 3874595.0:
+			{
+				return 24; //Balaclavas are forever
+			}
+		case 12807213.0:
+			{
+				return 25; //Cream spirit
+			}
+		case 4732984.0:
+			{
+				return 26; //Operators overalls
+			}
+		case 12073019.0:
+			{
+				return 27; //Team spirit
+			}
+		case 8400928.0:
+			{
+				return 28; //The value of teamwork
+			}
+		case 11049612.0:
+			{
+				return 28; //Waterlogged lab coat
+			}
+		}
+	}
+	
+	return -1;
+}
+
+float TF2_GetRuntimeAttribValue(int entity, int attribute) 
+{
+	if (!IsValidEntity(entity))
+	{
+		return 0.0;
+	}
+
+	int iAttribIndices[16];
+	float flAttribValues[16];
+	
+	int nAttribs = TF2Attrib_GetSOCAttribs(entity, iAttribIndices, flAttribValues);
+	
+	for (int i = 0; i < nAttribs; i++) 
+	{
+		if (iAttribIndices[i] == attribute) 
+		{
+			return flAttribValues[i];
+		}
+	}
+
+	return 0.00;
 }
