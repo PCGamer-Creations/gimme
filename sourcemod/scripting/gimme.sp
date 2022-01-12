@@ -4,7 +4,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION "1.9"
+#define PLUGIN_VERSION "1.10"
 
 public const int warpaintedWeps[45] = { 
 	37, 172, 194, 197, 199, 200, 201, 202, 203, 205, 206, 207, 208, 209, 210,
@@ -47,7 +47,7 @@ StringMap g_hItemInfoTrie;
 bool g_bMedieval;
 int g_iHasPermItems[MAXPLAYERS + 1];
 int g_iPermClass[MAXPLAYERS + 1];
-int ga_iPermItems[MAXPLAYERS + 1][12][3];
+int ga_iPermItems[MAXPLAYERS + 1][12][4];
 
 public void OnPluginStart()
 {
@@ -136,7 +136,8 @@ public Action GivePermItems(Handle timer, int userd)
 				int itemindex = ga_iPermItems[client][i][0];
 				int wpaint = ga_iPermItems[client][i][1];
 				int effect = ga_iPermItems[client][i][2];
-
+				int paint = ga_iPermItems[client][i][3];
+				
 				int trieweaponSlot;
 				char formatBuffer[32];
 				Format(formatBuffer, 32, "%d_%s", itemindex, "slot");
@@ -147,7 +148,7 @@ public Action GivePermItems(Handle timer, int userd)
 				}
 				else
 				{
-					EquipItemByItemIndex(client, itemindex, wpaint, effect);
+					EquipItemByItemIndex(client, itemindex, wpaint, effect, paint);
 				}
 			}
 		}
@@ -169,22 +170,20 @@ public APLRes AskPluginLoad2(Handle hMySelf, bool bLate, char[] szError, int iEr
 
 stock int Native_GiveItem(Handle plugin, int numParams)
 {
+	int warpaint = 0;
+	int effect = 0;
+	int paint = 0;
+
 	int client = GetNativeCell(1);
 	int itemindex = GetNativeCell(2);
-	int warpaint = GetNativeCell(3);
-	int effect = GetNativeCell(4);	
+	warpaint = GetNativeCell(3);
+	effect = GetNativeCell(4);
+	paint = GetNativeCell(5);		
 	if (!IsValidClient(client) || !IsPlayerAlive(client)) 
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "[Gimme] Target %N is invalid or dead at the moment.", client);		
 	}
-	if (warpaint < 1)
-	{
-		warpaint = 0;
-	}
-	if (effect < 1)
-	{
-		effect = 0;
-	}
+	
 	int trieweaponSlot;
 	char formatBuffer[32];
 	Format(formatBuffer, 32, "%d_%s", itemindex, "slot");
@@ -208,7 +207,7 @@ stock int Native_GiveItem(Handle plugin, int numParams)
 	}
 	else if(TF2Econ_IsValidItemDefinition(itemindex))	
 	{
-		EquipItemByItemIndex(client, itemindex, warpaint, effect);
+		EquipItemByItemIndex(client, itemindex, warpaint, effect, paint);
 		
 		return true;
 	}
@@ -232,7 +231,7 @@ stock int Native_GiveWP(Handle plugin, int numParams)
 	{
 		return ThrowNativeError(SP_ERROR_NATIVE, "[Gimme] Weapon %i is not able to be Warpainted", itemindex);		
 	}	
-	if ((warpaint < 200) || (warpaint > 391) || (warpaint >297 && warpaint < 300) || (warpaint >310 && warpaint <390))
+	if ((warpaint > 1 && warpaint < 200) || (warpaint > 391) || (warpaint >297 && warpaint < 300) || (warpaint >310 && warpaint <390))
 	{	
 		return ThrowNativeError(SP_ERROR_NATIVE, "[Gimme] Warpaint ID of  %i is invalid", warpaint);		
 	}
@@ -371,7 +370,7 @@ public Action Command_GetItem(int client, int args)
 
 			return Plugin_Handled; 		
 		}
-		if ((wpaint < 200) || (wpaint > 391) || (wpaint >297 && wpaint < 300) || (wpaint >310 && wpaint <390))
+		if ((wpaint > 1 && wpaint < 200) || (wpaint > 391) || (wpaint >297 && wpaint < 300) || (wpaint >310 && wpaint <390))
 		{
 			ReplyToCommand(client, "[SM] Valid warpaint ids: 200-297, 300-310, 390, 391"); 
 			ReplyToCommand(client, "example: !gimme 205 300");
@@ -463,7 +462,7 @@ public Action Command_GiveItem(int client, int args)
 			return Plugin_Handled; 		
 		}
 
-		if ((wpaint < 200) || (wpaint > 391) || (wpaint >297 && wpaint < 300) || (wpaint >310 && wpaint <390))
+		if ((wpaint > 1 && wpaint < 200) || (wpaint > 391) || (wpaint >297 && wpaint < 300) || (wpaint >310 && wpaint <390))
 		{
 			ReplyToCommand(client, "[SM] Valid warpaint ids: 200-297, 300-310, 390, 391"); 
 			ReplyToCommand(client, "example: !gimme 205 300");
@@ -552,7 +551,11 @@ public Action Command_GiveItemPerm(int client, int args)
 	
 	char arg4[32];
 	GetCmdArg(4, arg4, sizeof(arg4));
-	int effect = StringToInt(arg4);		
+	int effect = StringToInt(arg4);	
+
+	char arg5[32];
+	GetCmdArg(5, arg5, sizeof(arg5));
+	int paint = StringToInt(arg5);		
 
 	int trieweaponSlot;
 	char formatBuffer[32];
@@ -569,7 +572,7 @@ public Action Command_GiveItemPerm(int client, int args)
 		}
 	}
 
-	if (wpaint > 0)
+	if (wpaint > 1)
 	{
 		if (!FindIfCanBeWarpainted(itemindex))
 		{
@@ -579,9 +582,9 @@ public Action Command_GiveItemPerm(int client, int args)
 			return Plugin_Handled; 		
 		}
 
-		if ((wpaint < 200) || (wpaint > 391) || (wpaint >297 && wpaint < 300) || (wpaint >310 && wpaint <390))
+		if ((wpaint > 1 && wpaint < 200) || (wpaint > 391) || (wpaint > 297 && wpaint < 300) || (wpaint >310 && wpaint <390))
 		{
-			ReplyToCommand(client, "[SM] Valid warpaint ids: 200-297, 300-310, 390, 391"); 
+			ReplyToCommand(client, "[SM] Valid warpaint ids: 1, 200-297, 300-310, 390, 391"); 
 			ReplyToCommand(client, "example: !gimme 205 300");
 
 			return Plugin_Handled; 		
@@ -598,6 +601,11 @@ public Action Command_GiveItemPerm(int client, int args)
 	{
 		wpaint = 0;
 	}
+	
+	if (paint < 1)
+	{
+		paint = 0;
+	}	
 
 	char arg[32];
 	GetCmdArg(1, arg, sizeof(arg));
@@ -631,6 +639,7 @@ public Action Command_GiveItemPerm(int client, int args)
 		ga_iPermItems[target_list[i]][j][0] = itemindex;
 		ga_iPermItems[target_list[i]][j][1] = wpaint;
 		ga_iPermItems[target_list[i]][j][2] = effect;
+		ga_iPermItems[target_list[i]][j][3] = paint;		
 
 		if(isValidItem)
 		{
@@ -640,8 +649,8 @@ public Action Command_GiveItemPerm(int client, int args)
 		else
 		{
 			EquipItemByItemIndex(target_list[i], itemindex, wpaint, effect);
-			LogAction(client, target_list[i], "\"%L\" gave \"%L\" weapon %i with warpaint %i and effect %i", client, target_list[i], itemindex, wpaint, effect);
-			ReplyToCommand(client, "[SM] Gave %N an item %i with warpaint %i and effect %i", target_list[i], itemindex, wpaint, effect);
+			LogAction(client, target_list[i], "\"%L\" gave \"%L\" weapon %i with warpaint %i, effect %i and paint %i", client, target_list[i], itemindex, wpaint, effect, paint);
+			ReplyToCommand(client, "[SM] Gave %N an item %i with warpaint %i, effect %i and paint %i", target_list[i], itemindex, wpaint, effect, paint);
 		}
 	}
 	
@@ -875,6 +884,10 @@ Action Command_Permanent_Items(int client, int args)
 	GetCmdArg(3, arg3, sizeof(arg3));
 	int effect = StringToInt(arg3);
 
+	char arg4[32];
+	GetCmdArg(4, arg4, sizeof(arg4));
+	int paint = StringToInt(arg4);
+
 	
 	if (args < 1)
 	{
@@ -921,6 +934,7 @@ Action Command_Permanent_Items(int client, int args)
 		ga_iPermItems[client][i][0] = itemindex;
 		ga_iPermItems[client][i][1] = wpaint;
 		ga_iPermItems[client][i][2] = effect;
+		ga_iPermItems[client][i][3] = paint;		
 
 		GiveWeaponCustom(client, itemindex);
 
@@ -985,65 +999,35 @@ Action Command_Permanent_Items(int client, int args)
 
 			return Plugin_Handled; 		
 		}
-		if ((wpaint < 200) || (wpaint > 391) || (wpaint >297 && wpaint < 300) || (wpaint >310 && wpaint <390))
+		if ((wpaint > 1 && wpaint < 200) || (wpaint > 391) || (wpaint > 297 && wpaint < 300) || (wpaint >310 && wpaint <390))
 		{
-			ReplyToCommand(client, "[SM] valid warpaint ids: 200-297, 300-310, 390, 391"); 
+			ReplyToCommand(client, "[SM] valid warpaint ids: 1, 200-297, 300-310, 390, 391"); 
 			ReplyToCommand(client, "example: !gimme 205 300");
 
 			return Plugin_Handled; 		
 		}
-		if (effect < 0)
-		{
-			effect = 0;
-		}
-		
-		g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
-		if (g_iHasPermItems[client] < 0)
-		{
-			g_iHasPermItems[client] = 0;
-		}		
-		g_iHasPermItems[client] = g_iHasPermItems[client] +1;
-		int i = g_iHasPermItems[client];
-		ga_iPermItems[client][i][0] = itemindex;
-		ga_iPermItems[client][i][1] = wpaint;
-		ga_iPermItems[client][i][2] = effect;
-		
-		EquipItemByItemIndex(client, itemindex, wpaint, effect);
-		
-		return Plugin_Handled;		
 	}
 	
-	if (effect > 0)
+	if (paint > 29)
 	{
-		g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
-		if (g_iHasPermItems[client] < 0)
-		{
-			g_iHasPermItems[client] = 0;
-		}
-		g_iHasPermItems[client] = g_iHasPermItems[client] +1;
-		int i = g_iHasPermItems[client];
-		ga_iPermItems[client][i][0] = itemindex;
-		ga_iPermItems[client][i][1] = wpaint;
-		ga_iPermItems[client][i][2] = effect;		
+		ReplyToCommand(client, "[SM] Invalid paint id.  Valid paint ids are 0-29");	
 		
-		EquipItemByItemIndex(client, itemindex, wpaint, effect);
+		return Plugin_Handled;
 	}
 	
-	else
+	g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
+	if (g_iHasPermItems[client] < 0)
 	{
-		g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
-		if (g_iHasPermItems[client] < 0)
-		{
-			g_iHasPermItems[client] = 0;
-		}
-		g_iHasPermItems[client] = g_iHasPermItems[client] +1;
-		int i = g_iHasPermItems[client];
-		ga_iPermItems[client][i][0] = itemindex;
-		ga_iPermItems[client][i][1] = wpaint;
-		ga_iPermItems[client][i][2] = effect;		
-		
-		EquipItemByItemIndex(client, itemindex);
+		g_iHasPermItems[client] = 0;
 	}
+	g_iHasPermItems[client] = g_iHasPermItems[client] +1;
+	int i = g_iHasPermItems[client];
+	ga_iPermItems[client][i][0] = itemindex;
+	ga_iPermItems[client][i][1] = wpaint;
+	ga_iPermItems[client][i][2] = effect;
+	ga_iPermItems[client][i][3] = paint;		
+	
+	EquipItemByItemIndex(client, itemindex, wpaint, effect, paint);
 	
 	return Plugin_Handled;
 }
@@ -1105,7 +1089,7 @@ Action Command_Permanent_Items_List(int client, int args)
 	
 	for (int i = 1; i < g_iHasPermItems[client]+1; i++)
 	{
-		PrintToChat(client, "Item %i Index: %i, Warpaint: %i, Effect: %i", i, ga_iPermItems[client][i][0], ga_iPermItems[client][i][1], ga_iPermItems[client][i][2]); 
+		PrintToChat(client, "Item %i Index: %i, Warpaint: %i, Effect: %i, Paint: %i", i, ga_iPermItems[client][i][0], ga_iPermItems[client][i][1], ga_iPermItems[client][i][2], ga_iPermItems[client][i][3]); 
 	}
 
 	return Plugin_Handled;
@@ -1234,13 +1218,21 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 		}
 	}
 
-	if(quality == 9) //self made quality
+	if(quality == 9) //self made quality, used for custom australium items
 	{
 		TF2Attrib_SetByName(newitem, "is australium item", 1.0);
 		TF2Attrib_SetByName(newitem, "item style override", 1.0);
+		SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 11);		
 	}
 
-	if (warpaint > 0)
+	if (warpaint == 1) //used for australium items
+	{
+		TF2Attrib_SetByName(newitem, "is australium item", 1.0);
+		TF2Attrib_SetByName(newitem, "item style override", 1.0);
+		SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 11);		
+	}
+
+	if (warpaint > 2)
 	{
 		TF2Attrib_SetByDefIndex(newitem, 834, view_as<float>(warpaint));
 		SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 15);		
@@ -1292,7 +1284,14 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 	if (effect > 0 && warpaint == 0)
 	{
 		SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 5);	
-		TF2Attrib_SetByDefIndex(newitem, 134, effect + 0.0);
+		if (effect == 999)
+		{
+			TF2Attrib_SetByDefIndex(newitem, 134, GetRandomInt(1,223) + 0.0);
+		}
+		else
+		{
+			TF2Attrib_SetByDefIndex(newitem, 134, effect + 0.0);
+		}
 	}
 	
 	if(weaponSlot < 2)
@@ -1467,26 +1466,29 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 	
 	if (g_hWeaponEffects.BoolValue && FindIfCanBeWarpainted(itemindex))
 	{
-		if (warpaint < 1 || effect < 1)
+		if (weaponSlot < 2 || StrEqual(classname, "tf_weapon_knife"))
 		{
-			SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 5);
-			TF2_SwitchtoSlot(client, weaponSlot);
-			int iRand = GetRandomUInt(1,4);
-			if (iRand == 1)
+			if (warpaint < 2 || effect < 1)
 			{
-				TF2Attrib_SetByDefIndex(newitem, 134, 701.0);	
-			}
-			else if (iRand == 2)
-			{
-				TF2Attrib_SetByDefIndex(newitem, 134, 702.0);	
-			}	
-			else if (iRand == 3)
-			{
-				TF2Attrib_SetByDefIndex(newitem, 134, 703.0);	
-			}
-			else if (iRand == 4)
-			{
-				TF2Attrib_SetByDefIndex(newitem, 134, 704.0);	
+				SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 5);
+				TF2_SwitchtoSlot(client, weaponSlot);
+				int iRand = GetRandomUInt(1,4);
+				if (iRand == 1)
+				{
+					TF2Attrib_SetByDefIndex(newitem, 134, 701.0);	
+				}
+				else if (iRand == 2)
+				{
+					TF2Attrib_SetByDefIndex(newitem, 134, 702.0);	
+				}	
+				else if (iRand == 3)
+				{
+					TF2Attrib_SetByDefIndex(newitem, 134, 703.0);	
+				}
+				else if (iRand == 4)
+				{
+					TF2Attrib_SetByDefIndex(newitem, 134, 704.0);	
+				}
 			}
 		}
 		if (effect > 0)
@@ -2012,6 +2014,19 @@ stock Action ListWeapons(int client, int target)
 				{
 					warpaint = 0.0;
 				}
+
+				Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
+				if (IsValidAddress(view_as<Address>(pAttrib3)))
+				{
+					float rawaustralium = TF2Attrib_GetValue(pAttrib3);
+					char ConvertEffect[32];
+					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
+					warpaint = view_as<float>(StringToInt(ConvertEffect));	
+				}
+				else
+				{
+					warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);				
+				}
 				
 				Address pAttrib2 = TF2Attrib_GetByDefIndex(weapon, 134);
 				if (IsValidAddress(view_as<Address>(pAttrib2)))
@@ -2068,11 +2083,15 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 						float raweffect = TF2Attrib_GetValue(pAttrib);
 						char ConvertEffect[32];
 						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
-						effect = StringToInt(ConvertEffect);	
+						effect = StringToInt(ConvertEffect);
+						PrintToChat(client,"hello there! effect: %i", effect);
 					}
 					else
 					{
-						effect = view_as<int>(TF2_GetRuntimeAttribValue(edict, 134));
+						float raweffect = TF2_GetRuntimeAttribValue(edict, 134);
+						char ConvertEffect[32];
+						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
+						effect = StringToInt(ConvertEffect);
 					}
 					
 					Address pAttrib2 = TF2Attrib_GetByDefIndex(edict, 142);
@@ -2084,7 +2103,7 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 					{
 						rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
 					}
-		
+					
 					if (rawpaint > 0)
 					{
 						paint = Translate_Paint(rawpaint);
@@ -2162,6 +2181,19 @@ stock Action CloneWeapons(int client, int target)
 				{
 					warpaint = 0.0;
 				}
+
+				Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
+				if (IsValidAddress(view_as<Address>(pAttrib3)))
+				{
+					float rawaustralium = TF2Attrib_GetValue(pAttrib3);
+					char ConvertEffect[32];
+					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
+					warpaint = view_as<float>(StringToInt(ConvertEffect));	
+				}
+				else
+				{
+					warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);				
+				}
 				
 				Address pAttrib2 = TF2Attrib_GetByDefIndex(weapon, 134);
 				if (IsValidAddress(view_as<Address>(pAttrib2)))
@@ -2220,7 +2252,10 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 						}
 						else
 						{
-							effect = view_as<int>(TF2_GetRuntimeAttribValue(edict, 134));
+							float raweffect = TF2_GetRuntimeAttribValue(edict, 134);
+							char ConvertEffect[32];
+							Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
+							effect = StringToInt(ConvertEffect);
 						}
 						
 						Address pAttrib2 = TF2Attrib_GetByDefIndex(edict, 142);
@@ -2232,7 +2267,7 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 						{
 							rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
 						}
-			
+						
 						if (rawpaint > 0)
 						{
 							paint = Translate_Paint(rawpaint);
@@ -2275,6 +2310,7 @@ stock Action TF2_RemoveAllWearables(int client)
 {
 	RemoveWearable(client, "tf_wearable", "CTFWearable");
 	RemoveWearable(client, "tf_powerup_bottle", "CTFPowerupBottle");
+	RemoveSpellbook(client);	
 }
 
 stock Action RemoveWearable(int client, char[] classname, char[] networkclass)
@@ -2336,6 +2372,32 @@ stock void RemoveAllWeapons(int client)
 				TF2_RemoveWeaponSlot(client, slot);	
 			}
 		}
+	}
+}
+
+stock Action RemoveSpellbook(int client)
+{
+	if (IsPlayerAlive(client))
+	{
+		int entity = -1;
+		
+		while((entity = FindEntityByClassname(entity, "tf_weapon_spellbook")) != -1)
+		{
+			int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+			
+			if (owner != client)
+			{
+				continue;
+			}
+			
+			int wearable = GetEntPropEnt(entity, Prop_Send, "m_hExtraWearable");
+			if (wearable != -1)
+			{
+				AcceptEntityInput(wearable, "kill");
+			}
+			
+			RemovePlayerItem(client, entity);
+		}		
 	}
 }
 
@@ -2459,7 +2521,7 @@ stock int Translate_Paint(float rawpaint)
 			}
 		case 11049612.0:
 			{
-				return 28; //Waterlogged lab coat
+				return 29; //Waterlogged lab coat
 			}
 		}
 	}

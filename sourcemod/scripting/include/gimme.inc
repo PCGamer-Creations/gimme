@@ -8,12 +8,13 @@
  *
  * @param client			Client Index. Does an alive/in-game/valid check.
  * @param itemIndex			Item Definition Index of weapon being given. Also works with custom weapons.
- * @param warpaint			0 or Warpaint ID number. valid warpaint ids: 200-297, 300-310, 390, 391. 
- * @param effect			0 or Unusual Effect ID number. example numbers 0-220.
+ * @param warpaint			Blank, 0, 1 or Warpaint ID number. valid warpaint ids: 200-297, 300-310, 390, 391. 1 = australium 
+ * @param effect			Blank, 0 or Unusual Effect ID number. valid numbers 0-220.
+ * @param paint				Blank, 0 or Paint ID number. valid numbers 0-29.
  * @return					true if weapon is given, else false.
  * @error					Invalid/dead client, or item index not found.
  */
-native bool giveitem(int client, int itemIndex, int warpaint = 0, int effect = 0);
+native bool giveitem(int client, int itemIndex, int warpaint = 0, int effect = 0, int paint = 0);
 
 /**
  * Gives a client a warpainted weapon by item index.
