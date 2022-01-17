@@ -4,7 +4,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION "1.11"
+#define PLUGIN_VERSION "1.12"
 
 public const int warpaintedWeps[45] = { 
 	37, 172, 194, 197, 199, 200, 201, 202, 203, 205, 206, 207, 208, 209, 210,
@@ -775,9 +775,9 @@ Action Command_CloneSource(int client, int args)
 			}
 		}
 		
+		TF2_SetPlayerClass(client, TF2_GetPlayerClass(target));
 		TF2_RemoveAllWearables(client);
 		RemoveAllWeapons(client);
-		TF2_SetPlayerClass(client, TF2_GetPlayerClass(target));
 		if(TF2_GetPlayerClass(client) == TFClass_Engineer)
 		{
 			TF2_RegeneratePlayer(client);
@@ -854,9 +854,9 @@ Action Command_CloneSourcePermanent(int client, int args)
 			}
 		}
 		
+		TF2_SetPlayerClass(client, TF2_GetPlayerClass(target));
 		TF2_RemoveAllWearables(client);
 		RemoveAllWeapons(client);
-		TF2_SetPlayerClass(client, TF2_GetPlayerClass(target));
 		if(TF2_GetPlayerClass(client) == TFClass_Engineer)
 		{
 			TF2_RegeneratePlayer(client);
@@ -1435,7 +1435,7 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 	{
 		if(GetRandomInt(1,30) == 1) //festive check
 		{
-			TF2Attrib_SetByDefIndex(newitem, 2053, 1.0);
+			//			TF2Attrib_SetByDefIndex(newitem, 2053, 1.0);
 		}
 	}
 	
@@ -1720,106 +1720,111 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 		}
 	}
 
-	if (TF2Econ_GetItemLoadoutSlot(itemindex, TF2_GetPlayerClass(client)) < 0)
+	if (StrEqual(classname, "tf_weapon_scattergun"))
 	{
-		if (StrEqual(classname, "tf_weapon_scattergun"))
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
+		SetNewAmmo(client, weaponSlot, 32);
+	}
+	if (StrEqual(classname, "tf_weapon_shortstop") || StrEqual(classname, "tf_weapon_pep_brawler_blaster"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
+		SetNewAmmo(client, weaponSlot, 32);
+	}
+	if (StrEqual(classname, "tf_weapon_pistol"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 12);
+		SetNewAmmo(client, weaponSlot, 36);
+	}
+	if (StrContains(classname, "tf_weapon_shotgun") != -1)
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
+		SetNewAmmo(client, weaponSlot, 32);
+	}	
+	if (StrEqual(classname, "tf_weapon_handgun_scout_secondary"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 12);
+		SetNewAmmo(client, weaponSlot, 36);
+	}		
+	if (StrEqual(classname, "tf_weapon_rocketlauncher") || StrEqual(classname, "tf_weapon_rocketlauncher_directhit") || StrEqual(classname, "tf_weapon_rocketlauncher_airstrike"))
+	{
+		if (itemindex == 228)
 		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
-			SetNewAmmo(client, weaponSlot, 32);
+			SetEntProp(newitem, Prop_Data, "m_iClip1", 3);
+			SetNewAmmo(client, weaponSlot, 20);		
 		}
-		if (StrEqual(classname, "tf_weapon_shortstop") || StrEqual(classname, "tf_weapon_pep_brawler_blaster"))
+		else
 		{
 			SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
-			SetNewAmmo(client, weaponSlot, 32);
-		}
-		if (StrEqual(classname, "tf_weapon_pistol"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 12);
-			SetNewAmmo(client, weaponSlot, 36);
-		}
-		if (StrContains(classname, "tf_weapon_shotgun") != -1)
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
-			SetNewAmmo(client, weaponSlot, 32);
-		}	
-		if (StrEqual(classname, "tf_weapon_handgun_scout_secondary"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 12);
-			SetNewAmmo(client, weaponSlot, 36);
-		}		
-		if (StrEqual(classname, "tf_weapon_rocketlauncher") || StrEqual(classname, "tf_weapon_rocketlauncher_directhit") || StrEqual(classname, "tf_weapon_rocketlauncher_airstrike"))
-		{
-			if (itemindex == 228)
-			{
-				SetEntProp(newitem, Prop_Data, "m_iClip1", 3);
-				SetNewAmmo(client, weaponSlot, 20);		
-			}
-			else
-			{
-				SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
-				SetNewAmmo(client, weaponSlot, 20);
-			}
-		}
-		if (StrEqual(classname, "tf_weapon_minigun") || StrEqual(classname, "tf_weapon_flamethrower"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 200);
-		}
-		if (StrEqual(classname, "tf_weapon_rocketlauncher_fireball"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
-		}
-		if (StrEqual(classname, "tf_weapon_grenadelauncher"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
-			SetNewAmmo(client, weaponSlot, 16);
-		}
-		if (StrEqual(classname, "tf_weapon_pipebomblauncher"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 8);
-			SetNewAmmo(client, weaponSlot, 24);
-		}
-		if (StrEqual(classname, "tf_weapon_syringegun_medic"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
-			SetNewAmmo(client, weaponSlot, 150);
-		}
-		if (StrEqual(classname, "tf_weapon_syringegun_medic"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
-			SetNewAmmo(client, weaponSlot, 150);
-		}
-		if (StrEqual(classname, "tf_weapon_crossbow"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 1);
-			SetNewAmmo(client, weaponSlot, 38);
-		}
-		if (StrEqual(classname, "tf_weapon_sniperrifle") || StrEqual(classname, "tf_weapon_sniperrifle_decap") || StrEqual(classname, "tf_weapon_sniperrifle_classic"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 25);
-		}	
-		if (StrEqual(classname, "tf_weapon_compound_bow"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 1);
-			SetNewAmmo(client, weaponSlot, 25);
-		}
-		if (StrEqual(classname, "tf_weapon_smg"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 25);
-			SetNewAmmo(client, weaponSlot, 75);
-		}
-		if (StrEqual(classname, "tf_weapon_charged_smg"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 20);
-			SetNewAmmo(client, weaponSlot, 75);
-		}
-		if (StrEqual(classname, "tf_weapon_revolver"))
-		{
-			SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
-			SetNewAmmo(client, weaponSlot, 24);
+			SetNewAmmo(client, weaponSlot, 20);
 		}
 	}
+	if (StrEqual(classname, "tf_weapon_minigun") || StrEqual(classname, "tf_weapon_flamethrower"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 200);
+	}
+	if (StrEqual(classname, "tf_weapon_rocketlauncher_fireball"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
+	}
+	if (StrEqual(classname, "tf_weapon_grenadelauncher"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
+		SetNewAmmo(client, weaponSlot, 16);
+	}
+	if (StrEqual(classname, "tf_weapon_pipebomblauncher"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 8);
+		SetNewAmmo(client, weaponSlot, 24);
+	}
+	if (StrEqual(classname, "tf_weapon_syringegun_medic"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
+		SetNewAmmo(client, weaponSlot, 150);
+	}
+	if (StrEqual(classname, "tf_weapon_syringegun_medic"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
+		SetNewAmmo(client, weaponSlot, 150);
+	}
+	if (StrEqual(classname, "tf_weapon_crossbow"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 1);
+		SetNewAmmo(client, weaponSlot, 38);
+	}
+	if (StrEqual(classname, "tf_weapon_sniperrifle") || StrEqual(classname, "tf_weapon_sniperrifle_decap") || StrEqual(classname, "tf_weapon_sniperrifle_classic"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 25);
+	}	
+	if (StrEqual(classname, "tf_weapon_compound_bow"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 1);
+		SetNewAmmo(client, weaponSlot, 25);
+	}
+	if (StrEqual(classname, "tf_weapon_smg"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 25);
+		SetNewAmmo(client, weaponSlot, 75);
+	}
+	if (StrEqual(classname, "tf_weapon_charged_smg"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 20);
+		SetNewAmmo(client, weaponSlot, 75);
+	}
+	if (StrEqual(classname, "tf_weapon_revolver"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
+		SetNewAmmo(client, weaponSlot, 24);
+	}
 	
-	TF2_SwitchtoSlot(client, 0);	
+	if (g_bMedieval)
+	{
+		TF2_SwitchtoSlot(client, 2);
+	}
+	else
+	{
+		TF2_SwitchtoSlot(client, 2);
+		TF2_SwitchtoSlot(client, 0);	
+	}
 
 	char itemname[64];
 	TF2Econ_GetItemName(itemindex, itemname, sizeof(itemname));
@@ -2118,6 +2123,102 @@ public int GiveWeaponCustom(int client, int configindex)
 		EquipPlayerWeapon(client, newitem);
 	}
 
+	if (StrEqual(weaponClass, "tf_weapon_scattergun"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
+		SetNewAmmo(client, slot, 32);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_shortstop") || StrEqual(weaponClass, "tf_weapon_pep_brawler_blaster"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
+		SetNewAmmo(client, slot, 32);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_pistol"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 12);
+		SetNewAmmo(client, slot, 36);
+	}
+	if (StrContains(weaponClass, "tf_weapon_shotgun") != -1)
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
+		SetNewAmmo(client, slot, 32);
+	}	
+	if (StrEqual(weaponClass, "tf_weapon_handgun_scout_secondary"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 12);
+		SetNewAmmo(client, slot, 36);
+	}		
+	if (StrEqual(weaponClass, "tf_weapon_rocketlauncher") || StrEqual(weaponClass, "tf_weapon_rocketlauncher_directhit") || StrEqual(weaponClass, "tf_weapon_rocketlauncher_airstrike"))
+	{
+		if (index == 228)
+		{
+			SetEntProp(newitem, Prop_Data, "m_iClip1", 3);
+			SetNewAmmo(client, slot, 20);		
+		}
+		else
+		{
+			SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
+			SetNewAmmo(client, slot, 20);
+		}
+	}
+	if (StrEqual(weaponClass, "tf_weapon_minigun") || StrEqual(weaponClass, "tf_weapon_flamethrower"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 200);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_rocketlauncher_fireball"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_grenadelauncher"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 4);
+		SetNewAmmo(client, slot, 16);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_pipebomblauncher"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 8);
+		SetNewAmmo(client, slot, 24);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_syringegun_medic"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
+		SetNewAmmo(client, slot, 150);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_syringegun_medic"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 40);
+		SetNewAmmo(client, slot, 150);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_crossbow"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 1);
+		SetNewAmmo(client, slot, 38);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_sniperrifle") || StrEqual(weaponClass, "tf_weapon_sniperrifle_decap") || StrEqual(weaponClass, "tf_weapon_sniperrifle_classic"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 25);
+	}	
+	if (StrEqual(weaponClass, "tf_weapon_compound_bow"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 1);
+		SetNewAmmo(client, slot, 25);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_smg"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 25);
+		SetNewAmmo(client, slot, 75);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_charged_smg"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 20);
+		SetNewAmmo(client, slot, 75);
+	}
+	if (StrEqual(weaponClass, "tf_weapon_revolver"))
+	{
+		SetEntProp(newitem, Prop_Data, "m_iClip1", 6);
+		SetNewAmmo(client, slot, 24);
+	}
+
 	if (ammo > 0)
 	{
 		SetNewAmmo(client, slot, ammo);
@@ -2159,7 +2260,8 @@ public Action Command_Clone(int client, int source)
 	g_iPermClass[client] = -1;
 	TF2_RemoveAllWearables(client);
 	CloneWeapons(client, source);	
-	CloneWearables(client, source, "tf_wearable", "CTFWearable");	
+	CloneWearables(client, source, "tf_wearable", "CTFWearable");
+	
 	return Plugin_Handled;
 }
 
@@ -2169,7 +2271,8 @@ public Action Command_ClonePermanent(int client, int source)
 	g_iPermClass[client] = -1;
 	TF2_RemoveAllWearables(client);
 	CloneWeaponsPermanent(client, source);	
-	CloneWearablesPermanent(client, source, "tf_wearable", "CTFWearable");	
+	CloneWearablesPermanent(client, source, "tf_wearable", "CTFWearable");
+	
 	return Plugin_Handled;
 }
 
@@ -2179,7 +2282,8 @@ public Action Command_CloneOthers(int target, int source)
 	g_iPermClass[target] = -1;
 	TF2_RemoveAllWearables(target);
 	CloneWeapons(target, source);	
-	CloneWearables(target, source, "tf_wearable", "CTFWearable");	
+	CloneWearables(target, source, "tf_wearable", "CTFWearable");
+	
 	return Plugin_Handled;
 }
 
@@ -2189,7 +2293,17 @@ public Action Command_CloneOthersPermanent(int target, int source)
 	g_iPermClass[target] = -1;
 	TF2_RemoveAllWearables(target);
 	CloneWeaponsPermanent(target, source);	
-	CloneWearablesPermanent(target, source, "tf_wearable", "CTFWearable");	
+	CloneWearablesPermanent(target, source, "tf_wearable", "CTFWearable");
+	if (g_bMedieval)
+	{
+		TF2_SwitchtoSlot(target, 2);
+	}
+	else
+	{
+		TF2_SwitchtoSlot(target, 2);
+		TF2_SwitchtoSlot(target, 0);	
+	}
+	
 	return Plugin_Handled;
 }
 stock Action ListWeapons(int client, int target)
@@ -2245,11 +2359,13 @@ stock Action ListWeapons(int client, int target)
 				{
 					warpaint = TF2Attrib_GetValue(pAttrib);
 				}
-				else if (warpaint < 1)
+				
+				if (warpaint == 0.0)
 				{
 					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
 				}
-				else if (warpaint < 1)
+				
+				if (warpaint == 0.0)
 				{
 					Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
 					if (IsValidAddress(view_as<Address>(pAttrib3)))
@@ -2259,7 +2375,8 @@ stock Action ListWeapons(int client, int target)
 						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
 						warpaint = view_as<float>(StringToInt(ConvertEffect));
 					}
-					else if (warpaint < 1)
+					
+					if (warpaint == 0.0)
 					{
 						warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);
 					}
@@ -2273,15 +2390,10 @@ stock Action ListWeapons(int client, int target)
 					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
 					effect = StringToInt(ConvertEffect);	
 				}
-				else
+				if (effect == 0)
 				{
 					effect = view_as<int>(TF2_GetRuntimeAttribValue(weapon, 134));				
 				}
-
-				if (effect < 0)
-				{
-					effect = 0;
-				}				
 
 				PrintToChat(client, "slot: %i, index: %i, %s, warpaint: %i, effect: %i", slot, index, itemname, view_as<int>(warpaint), view_as<int>(effect));
 			}
@@ -2293,7 +2405,7 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 {
 	if (IsPlayerAlive(target))
 	{
-		int edict = MaxClients+1;
+		int edict = -1;
 		while((edict = FindEntityByClassname(edict, classname)) != -1)
 		{
 			char netclass[32];
@@ -2322,7 +2434,7 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
 						effect = StringToInt(ConvertEffect);
 					}
-					else
+					if (effect == 0)
 					{
 						float raweffect = TF2_GetRuntimeAttribValue(edict, 134);
 						char ConvertEffect[32];
@@ -2335,7 +2447,7 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 					{
 						rawpaint = TF2Attrib_GetValue(pAttrib2);
 					}					
-					else
+					if (rawpaint == 0.0)
 					{
 						rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
 					}
@@ -2345,15 +2457,6 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 						paint = Translate_Paint(rawpaint);
 					}
 					
-					if (effect < 0)
-					{
-						effect = 0;
-					}
-					if (paint < 0)
-					{
-						paint = 0;
-					}					
-
 					PrintToChat(client, "slot: %i, index: %i, %s, effect: %i, paint: %i", slot, index, itemname, view_as<int>(effect), paint);
 				}
 			}
@@ -2409,11 +2512,13 @@ stock Action CloneWeapons(int client, int target)
 				{
 					warpaint = TF2Attrib_GetValue(pAttrib);
 				}
-				else if (warpaint < 1)
+				
+				if (warpaint == 0.0)
 				{
 					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
 				}
-				else if (warpaint < 1)
+				
+				if (warpaint == 0.0)
 				{
 					Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
 					if (IsValidAddress(view_as<Address>(pAttrib3)))
@@ -2423,7 +2528,8 @@ stock Action CloneWeapons(int client, int target)
 						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
 						warpaint = view_as<float>(StringToInt(ConvertEffect));
 					}
-					else if (warpaint < 1)
+					
+					if (warpaint == 0.0)
 					{
 						warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);
 					}
@@ -2437,14 +2543,10 @@ stock Action CloneWeapons(int client, int target)
 					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
 					effect = StringToInt(ConvertEffect);	
 				}
-				else
+
+				if (effect == 0)
 				{
 					effect = view_as<int>(TF2_GetRuntimeAttribValue(weapon, 134));				
-				}
-
-				if (effect < 0)
-				{
-					effect = 0;
 				}
 				
 				EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect), paint);	
@@ -2501,11 +2603,13 @@ stock Action CloneWeaponsPermanent(int client, int target)
 				{
 					warpaint = TF2Attrib_GetValue(pAttrib);
 				}
-				else if (warpaint < 1)
+				
+				if (warpaint == 0.0)
 				{
 					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
 				}
-				else if (warpaint < 1)
+				
+				if (warpaint == 0.0)
 				{
 					Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
 					if (IsValidAddress(view_as<Address>(pAttrib3)))
@@ -2515,7 +2619,8 @@ stock Action CloneWeaponsPermanent(int client, int target)
 						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
 						warpaint = view_as<float>(StringToInt(ConvertEffect));
 					}
-					else if (warpaint < 1)
+					
+					if (warpaint == 0.0)
 					{
 						warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);
 					}
@@ -2529,14 +2634,9 @@ stock Action CloneWeaponsPermanent(int client, int target)
 					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
 					effect = StringToInt(ConvertEffect);	
 				}
-				else
+				if (effect == 0)
 				{
 					effect = view_as<int>(TF2_GetRuntimeAttribValue(weapon, 134));				
-				}
-
-				if (effect < 0)
-				{
-					effect = 0;
 				}
 				
 				g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
@@ -2561,7 +2661,7 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 {
 	if (IsPlayerAlive(target))
 	{
-		int edict = MaxClients+1;
+		int edict = -1;
 		while((edict = FindEntityByClassname(edict, classname)) != -1)
 		{
 			char netclass[32];
@@ -2586,9 +2686,9 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 							float raweffect = TF2Attrib_GetValue(pAttrib);
 							char ConvertEffect[32];
 							Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
-							effect = StringToInt(ConvertEffect);	
+							effect = StringToInt(ConvertEffect);
 						}
-						else
+						if (effect == 0)
 						{
 							float raweffect = TF2_GetRuntimeAttribValue(edict, 134);
 							char ConvertEffect[32];
@@ -2601,7 +2701,7 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 						{
 							rawpaint = TF2Attrib_GetValue(pAttrib2);
 						}					
-						else
+						if (rawpaint == 0.0)
 						{
 							rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
 						}
@@ -2611,16 +2711,6 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 							paint = Translate_Paint(rawpaint);
 						}
 						
-						if (effect < 0)
-						{
-							effect = 0;
-						}
-						
-						if (paint < 0)
-						{
-							paint = 0;
-						}
-
 						EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect), paint);
 					}
 				}
@@ -2633,7 +2723,7 @@ stock Action CloneWearablesPermanent(int client, int target, char[] classname, c
 {
 	if (IsPlayerAlive(target))
 	{
-		int edict = MaxClients+1;
+		int edict = -1;
 		while((edict = FindEntityByClassname(edict, classname)) != -1)
 		{
 			char netclass[32];
@@ -2658,9 +2748,9 @@ stock Action CloneWearablesPermanent(int client, int target, char[] classname, c
 							float raweffect = TF2Attrib_GetValue(pAttrib);
 							char ConvertEffect[32];
 							Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
-							effect = StringToInt(ConvertEffect);	
+							effect = StringToInt(ConvertEffect);
 						}
-						else
+						if (effect == 0)
 						{
 							float raweffect = TF2_GetRuntimeAttribValue(edict, 134);
 							char ConvertEffect[32];
@@ -2673,7 +2763,7 @@ stock Action CloneWearablesPermanent(int client, int target, char[] classname, c
 						{
 							rawpaint = TF2Attrib_GetValue(pAttrib2);
 						}					
-						else
+						if (rawpaint == 0.0)
 						{
 							rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
 						}
@@ -2683,15 +2773,6 @@ stock Action CloneWearablesPermanent(int client, int target, char[] classname, c
 							paint = Translate_Paint(rawpaint);
 						}
 						
-						if (effect < 0)
-						{
-							effect = 0;
-						}
-						if (paint < 0)
-						{
-							paint = 0;
-						}
-
 						g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
 						if (g_iHasPermItems[client] < 0)
 						{
@@ -2729,25 +2810,69 @@ stock int unsigned_compare(int a, int b)
 	return ((a >>> 31) > (b >>> 31)) ? 1 : -1;
 }
 
-stock Action TF2_RemoveAllWearables(int client)
+stock void TF2_RemoveAllWearables(int client)
 {
-	RemoveWearable(client, "tf_wearable", "CTFWearable");
-	RemoveWearable(client, "tf_powerup_bottle", "CTFPowerupBottle");
-	RemoveSpellbook(client);
-	RemoveGrapplingHook(client);
+	SetVariantString("");
+	AcceptEntityInput(client, "SetCustomModel");
+	SetEntProp(client, Prop_Send, "m_bCustomModelRotates", 0);
+	SetVariantString("ParticleEffectStop");
+	AcceptEntityInput(client, "DispatchEffect");
+
+	int wearable = -1;
+	while ((wearable = FindEntityByClassname(wearable, "tf_wearable*")) != -1)
+	{
+		if (IsValidEntity(wearable))
+		{
+			int player = GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity");
+			if (client == player)
+			{
+				TF2_RemoveWearable(client, wearable);
+			}
+		}
+	}
+
+	while ((wearable = FindEntityByClassname(wearable, "tf_powerup_bottle")) != -1)
+	{
+		if (IsValidEntity(wearable))
+		{
+			int player = GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity");
+			if (client == player)
+			{
+				TF2_RemoveWearable(client, wearable);
+			}
+		}
+	}
+
+	while ((wearable = FindEntityByClassname(wearable, "tf_weapon_spellbook")) != -1)
+	{
+		if (IsValidEntity(wearable))
+		{
+			int player = GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity");
+			if (client == player)
+			{
+				TF2_RemoveWearable(client, wearable);
+			}
+		}
+	}
+	
+	while((wearable = FindEntityByClassname(wearable, "tf_weapon_grapplinghook")) != -1)
+	{
+		if (IsValidEntity(wearable))
+		{
+			int player = GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity");
+			if (client == player)
+			{
+				TF2_RemoveWearable(client, wearable);
+			}
+		}
+	}
 }
 
 stock Action RemoveWearable(int client, char[] classname, char[] networkclass)
 {
 	if (IsPlayerAlive(client))
 	{
-		SetVariantString("");
-		AcceptEntityInput(client, "SetCustomModel");
-		SetEntProp(client, Prop_Send, "m_bCustomModelRotates", 0);
-		SetVariantString("ParticleEffectStop");
-		AcceptEntityInput(client, "DispatchEffect");
-
-		int edict = MaxClients+1;
+		int edict = -1;
 		while((edict = FindEntityByClassname(edict, classname)) != -1)
 		{
 			char netclass[32];
@@ -2766,11 +2891,9 @@ stock void RemoveAllWeapons(int client)
 {
 	if (IsPlayerAlive(client))
 	{
-		int weapon;
 		for (int slot = 0; slot < 6; slot++)
 		{
-			int ent = GetPlayerWeaponSlot(client, slot);
-			if (slot == 1 && ent == -1)
+			if (slot == 1)
 			{
 				if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
 				{
@@ -2796,7 +2919,7 @@ stock void RemoveAllWeapons(int client)
 				}
 			}
 
-			weapon = GetPlayerWeaponSlot(client, slot);
+			int weapon = GetPlayerWeaponSlot(client, slot);
 			if (weapon != -1)
 			{
 				TF2_RemoveWeaponSlot(client, slot);	
