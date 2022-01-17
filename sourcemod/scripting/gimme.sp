@@ -4,7 +4,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION "1.10"
+#define PLUGIN_VERSION "1.11"
 
 public const int warpaintedWeps[45] = { 
 	37, 172, 194, 197, 199, 200, 201, 202, 203, 205, 206, 207, 208, 209, 210,
@@ -28,6 +28,9 @@ public const int festiveWeps[224] = {
 	15132, 15133, 15134, 15135, 15136, 15137, 15138, 15139, 15140, 15141, 15142, 15143, 15144, 15145, 15146,
 	15147, 15148, 15148, 15149, 15150, 15151, 15152, 15153, 15154, 15155, 15156, 15157, 15158 };
 
+public const int bannedItems[2] = {
+	30015, 30535 };
+
 public Plugin myinfo =
 {
 	name = "[TF2] Gimme",
@@ -41,6 +44,7 @@ ConVar g_hWeaponEffects;
 ConVar g_hEnforceClassWeapons;
 ConVar g_hEnforceClassCosmetics;
 ConVar g_hEnforceClassCloning;
+ConVar g_hEnforceCosmeticConflicts;
 ConVar g_hAllowPermanentItems;
 Handle g_hEquipWearable;
 StringMap g_hItemInfoTrie;
@@ -57,6 +61,7 @@ public void OnPluginStart()
 	g_hEnforceClassWeapons = CreateConVar("sm_gimme_enforce_class_weapons", "1", "Enables/disables enforcement of class specific weapons", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_hEnforceClassCosmetics = CreateConVar("sm_gimme_enforce_class_cosmetics", "1", "Enables/disables enforcement of class specific cosmetics", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_hEnforceClassCloning = CreateConVar("sm_gimme_enforce_class_cloning", "1", "Enables/disables enforcement of class specific cloning", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_hEnforceCosmeticConflicts = CreateConVar("sm_gimme_enforce_cosmetic_conflicts", "1", "Enables/disables enforcement of cosmetic conflicts", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_hAllowPermanentItems = CreateConVar("sm_gimme_permanent_items_enabled", "0", "Enables/disables unusual effects on gimme weapons", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
 	RegAdminCmd("sm_gimme", Command_GetItem, ADMFLAG_SLAY, "Get an item");
@@ -67,13 +72,21 @@ public void OnPluginStart()
 	RegAdminCmd("sm_giveitemp", Command_GiveItemPerm, ADMFLAG_SLAY, "Give target player a permanent item");
 	RegAdminCmd("sm_removep", Command_RemoveItemPerm, ADMFLAG_SLAY, "Remove target permanent item status");
 	
-	RegAdminCmd("sm_clone", Command_CloneTarget, ADMFLAG_SLAY, "Duplicate targets equipped items");
+	RegAdminCmd("sm_clone", Command_CloneSource, ADMFLAG_SLAY, "Duplicate targets equipped items");
 	RegAdminCmd("sm_cloneothers", Command_CloneMulipleTargets, ADMFLAG_SLAY, "Duplicate targets equipped items");	
+
+	RegAdminCmd("sm_clonep", Command_CloneSourcePermanent, ADMFLAG_SLAY, "Duplicate targets equipped items permanently");
+	RegAdminCmd("sm_cloneothersp", Command_CloneMulipleTargetsPermanent, ADMFLAG_SLAY, "Duplicate targets equipped items permanently");
 
 	RegConsoleCmd("sm_index", Command_ShowIndex, "Gives Index URL" );
 	RegConsoleCmd("sm_listitems", Command_ListItems, "Show list of targets equipped items");
 
 	RegAdminCmd("sm_listp", Command_Permanent_Items_List, ADMFLAG_SLAY, "List permanent items");
+
+	RegAdminCmd("sm_stripall", Command_StripAll, ADMFLAG_SLAY, "Instantly remove model, weapons, and replace weapons with stock weapons");	
+	RegAdminCmd("sm_stripitems", Command_StripItems, ADMFLAG_SLAY, "Instantly remove model and all wearables");	
+	RegAdminCmd("sm_stripweapons", Command_StripWeapons, ADMFLAG_SLAY, "Instantly replace all weapons with stock weapons");		
+	RegAdminCmd("sm_regen", Command_RegeneratePlayer, ADMFLAG_SLAY, "Regenerate player");
 	
 	GameData hTF2 = new GameData("sm-tf2.games"); // sourcemod's tf2 gamedata
 
@@ -120,7 +133,7 @@ public void player_inv(Handle event, const char[] name, bool dontBroadcast)
 	
 	if (g_iHasPermItems[client])
 	{
-		CreateTimer(0.2, GivePermItems, userd);
+		CreateTimer(0.6, GivePermItems, userd);
 	}
 }
 
@@ -129,6 +142,8 @@ public Action GivePermItems(Handle timer, int userd)
 	int client = GetClientOfUserId(userd);
 	if (g_iPermClass[client] == view_as<int>(TF2_GetPlayerClass(client)))
 	{
+		TF2_RemoveAllWearables(client);
+
 		for (int i = 0; i < g_iHasPermItems[client]+1; i++)
 		{
 			if (ga_iPermItems[client][i][0] > 0)
@@ -285,7 +300,7 @@ public Action Command_GetItem(int client, int args)
 			}
 		}
 
-		if (trieweaponSlot < 6 && itemindex > 49999)
+		if (itemindex > 49999)
 		{
 			ReplyToCommand(client, "[SM] Gimme item index number must be under 40000.");
 			
@@ -339,10 +354,17 @@ public Action Command_GetItem(int client, int args)
 		}
 	}
 
-	if (itemSlot < 6 && itemindex > 49999)
+	if (itemindex > 49999)
 	{
 		ReplyToCommand(client, "[SM] Gimme item index number must be under 40000.");
 		
+		return Plugin_Handled;
+	}
+	
+	if (FindIfBannedItem(itemindex))
+	{
+		ReplyToCommand(client, "[SM] That item is not allowed on this server. Try a different item.");
+
 		return Plugin_Handled;
 	}
 
@@ -469,7 +491,6 @@ public Action Command_GiveItem(int client, int args)
 
 			return Plugin_Handled; 		
 		}		
-		
 	}
 	
 	if (effect < 1)
@@ -518,6 +539,7 @@ public Action Command_GiveItem(int client, int args)
 		{
 			GiveWeaponCustom(target_list[i], itemindex);
 			LogAction(client, target_list[i], "\"%L\" gave \"%L\" Custom Item %i", client, target_list[i], itemindex);
+			ReplyToCommand(client, "[SM] Gave %N custom item %i", target_list[i], itemindex);
 		}
 		else
 		{
@@ -648,7 +670,7 @@ public Action Command_GiveItemPerm(int client, int args)
 		}
 		else
 		{
-			EquipItemByItemIndex(target_list[i], itemindex, wpaint, effect);
+			EquipItemByItemIndex(target_list[i], itemindex, wpaint, effect, paint);
 			LogAction(client, target_list[i], "\"%L\" gave \"%L\" weapon %i with warpaint %i, effect %i and paint %i", client, target_list[i], itemindex, wpaint, effect, paint);
 			ReplyToCommand(client, "[SM] Gave %N an item %i with warpaint %i, effect %i and paint %i", target_list[i], itemindex, wpaint, effect, paint);
 		}
@@ -690,12 +712,12 @@ Action Command_ListItems(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_CloneTarget(int client, int args)
+Action Command_CloneSource(int client, int args)
 {
 	char arg1[32];
 	if (args <1)
 	{
-		ReplyToCommand(client, "[SM] Usage:  !clone <target>");
+		ReplyToCommand(client, "[SM] Usage:  !clone <source>");
 		return Plugin_Handled;
 	}
 
@@ -769,20 +791,15 @@ Action Command_CloneTarget(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Command_CloneMulipleTargets(int client, int args)
+Action Command_CloneSourcePermanent(int client, int args)
 {
 	char arg1[32];
-
-	if (args < 1)
+	if (args <1)
 	{
-		ReplyToCommand(client, "[SM] Usage:  !cloneothers <source> <targets>");
+		ReplyToCommand(client, "[SM] Usage:  !clonep <source>");
 		return Plugin_Handled;
 	}
 
-	if (args < 2)
-	{
-		arg1 = "@me";
-	}
 	else GetCmdArg(1, arg1, sizeof(arg1));
 	char target_name[MAX_TARGET_LENGTH];
 	int target_list[MAXPLAYERS], target_count;
@@ -801,10 +818,90 @@ Action Command_CloneMulipleTargets(int client, int args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
+
+	if (target_count > 1)
+	{
+		ReplyToCommand(client, "[SM] You targeted %i players. You can only clone one person at a time.", target_count);
+		return Plugin_Handled;
+	}
+	
+	int target = target_list[0];
+
+	if (client == target)
+	{
+		ReplyToCommand(client, "[SM] You already look fabulous.", client);
+		return Plugin_Handled;
+	}	
+
+	if (g_hEnforceClassCloning.BoolValue)
+	{
+		if (TF2_GetPlayerClass(client) != TF2_GetPlayerClass(target))
+		{
+			ReplyToCommand(client, "[SM] You may only clone a player with the same class");
+			return Plugin_Handled;			
+		}
+	}
+	
+	if (TF2_GetPlayerClass(client) != TF2_GetPlayerClass(target))
+	{
+		if(TF2_GetPlayerClass(target) == TFClass_Spy)
+		{
+			if (TF2_IsPlayerInCondition(target, TFCond_Disguised))
+			{
+				ReplyToCommand(client, "[SM] You cannot target a disguised Spy.");
+				ReplyToCommand(client, "Try again when they are not disguised.");				
+				return Plugin_Handled;
+			}
+		}
+		
+		TF2_RemoveAllWearables(client);
+		RemoveAllWeapons(client);
+		TF2_SetPlayerClass(client, TF2_GetPlayerClass(target));
+		if(TF2_GetPlayerClass(client) == TFClass_Engineer)
+		{
+			TF2_RegeneratePlayer(client);
+		}
+	}
+	
+	ReplyToCommand(client, "[SM] You will now clone %N.", target);
+
+	Command_ClonePermanent(client, target);
+	
+	return Plugin_Handled;
+}
+
+Action Command_CloneMulipleTargets(int client, int args)
+{
+	char arg2[32];
+
+	if (args < 1)
+	{
+		ReplyToCommand(client, "[SM] Usage:  !cloneothers <targets> <source>");
+		return Plugin_Handled;
+	}
+
+	else GetCmdArg(2, arg2, sizeof(arg2));
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	bool tn_is_ml;
+
+	if ((target_count = ProcessTargetString(
+					arg2,
+					client,
+					target_list,
+					MAXPLAYERS,
+					COMMAND_FILTER_NO_IMMUNITY,
+					target_name,
+					sizeof(target_name),
+					tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
 	
 	if (target_count < 1)
 	{
-		ReplyToCommand(client, "[SM] Usage: !cloneothers <source> <targets>");
+		ReplyToCommand(client, "[SM] Usage: !cloneothers <targets> <source>");
 		return Plugin_Handled;
 	}
 	
@@ -816,14 +913,20 @@ Action Command_CloneMulipleTargets(int client, int args)
 
 	int source = target_list[0];
 
-	char arg2[32];
-	GetCmdArg(2, arg2, sizeof(arg2));
+	char arg1[32];
+	
+	if (args < 2)
+	{
+		arg1 = "@me";
+	}
+	
+	GetCmdArg(1, arg1, sizeof(arg1));
 	char target_name2[MAX_TARGET_LENGTH];
 	int target_list2[MAXPLAYERS], target_count2;
 	bool tn_is_ml2;
 	
 	if ((target_count2 = ProcessTargetString(
-					arg2,
+					arg1,
 					client,
 					target_list2,
 					MAXPLAYERS,
@@ -860,6 +963,103 @@ Action Command_CloneMulipleTargets(int client, int args)
 
 		ReplyToCommand(client, "[SM] %N is now a clone of %N:", target_list2[i], source);
 		Command_CloneOthers(target_list2[i], source);
+	}
+	return Plugin_Handled;
+}
+
+Action Command_CloneMulipleTargetsPermanent(int client, int args)
+{
+	char arg2[32];
+
+	if (args < 1)
+	{
+		ReplyToCommand(client, "[SM] Usage:  !cloneothersp <targets> <source>");
+		return Plugin_Handled;
+	}
+
+	else GetCmdArg(2, arg2, sizeof(arg2));
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	bool tn_is_ml;
+
+	if ((target_count = ProcessTargetString(
+					arg2,
+					client,
+					target_list,
+					MAXPLAYERS,
+					COMMAND_FILTER_NO_IMMUNITY,
+					target_name,
+					sizeof(target_name),
+					tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	
+	if (target_count < 1)
+	{
+		ReplyToCommand(client, "[SM] Usage: !cloneothersp <targets> <source>");
+		return Plugin_Handled;
+	}
+	
+	if (target_count > 1)
+	{
+		ReplyToCommand(client, "[SM] You tried to clone %i players. You can only clone one source person at a time.", target_count);
+		return Plugin_Handled;
+	}	
+
+	int source = target_list[0];
+
+	char arg1[32];
+	
+	if (args < 2)
+	{
+		arg1 = "@me";
+	}
+	
+	GetCmdArg(1, arg1, sizeof(arg1));
+	char target_name2[MAX_TARGET_LENGTH];
+	int target_list2[MAXPLAYERS], target_count2;
+	bool tn_is_ml2;
+	
+	if ((target_count2 = ProcessTargetString(
+					arg1,
+					client,
+					target_list2,
+					MAXPLAYERS,
+					COMMAND_FILTER_NO_IMMUNITY,
+					target_name2,
+					sizeof(target_name2),
+					tn_is_ml2)) <= 0)
+	{
+		ReplyToTargetError(client, target_count2);
+		return Plugin_Handled;
+	}
+	for (int i = 0; i < target_count2; i++)
+	{
+		if (TF2_GetPlayerClass(target_list2[i]) != TF2_GetPlayerClass(source))
+		{
+			if(TF2_GetPlayerClass(source) == TFClass_Spy)
+			{
+				if (TF2_IsPlayerInCondition(source, TFCond_Disguised))
+				{
+					ReplyToCommand(client, "[SM] You cannot target a disguised Spy.");
+					ReplyToCommand(client, "Try again when they are not disguised.");				
+					return Plugin_Handled;
+				}
+			}
+
+			TF2_RemoveAllWearables(target_list2[i]);
+			RemoveAllWeapons(target_list2[i]);
+			TF2_SetPlayerClass(target_list2[i], TF2_GetPlayerClass(source));
+			if(TF2_GetPlayerClass(target_list2[i]) == TFClass_Engineer)
+			{
+				TF2_RegeneratePlayer(client);			
+			}
+		}
+
+		ReplyToCommand(client, "[SM] %N is now a clone of %N:", target_list2[i], source);
+		Command_CloneOthersPermanent(target_list2[i], source);
 	}
 	return Plugin_Handled;
 }
@@ -1218,21 +1418,14 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 		}
 	}
 
-	if(quality == 9) //self made quality, used for custom australium items
+	if(quality == 9 || warpaint == 1) //self made quality, internally used for australium items
 	{
 		TF2Attrib_SetByName(newitem, "is australium item", 1.0);
 		TF2Attrib_SetByName(newitem, "item style override", 1.0);
 		SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 11);		
 	}
 
-	if (warpaint == 1) //used for australium items
-	{
-		TF2Attrib_SetByName(newitem, "is australium item", 1.0);
-		TF2Attrib_SetByName(newitem, "item style override", 1.0);
-		SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 11);		
-	}
-
-	if (warpaint > 2)
+	if (warpaint > 1)
 	{
 		TF2Attrib_SetByDefIndex(newitem, 834, view_as<float>(warpaint));
 		SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 15);		
@@ -1676,6 +1869,17 @@ bool FindIfCanBeFestive(const int def)
 	return false;
 }
 
+bool FindIfBannedItem(const int def)
+{
+	for(int i = 0; i < sizeof(bannedItems); i++)
+	{
+		if(bannedItems[i] == def)
+		return true;
+	}
+
+	return false;
+}
+
 bool RemoveConflictWearables(int client, int newindex)
 {
 	int wearable = -1;
@@ -1687,9 +1891,12 @@ bool RemoveConflictWearables(int client, int newindex)
 			
 			if(TF2Econ_IsValidItemDefinition(oldindex))
 			{
-				if(TF2Econ_GetItemEquipRegionMask(oldindex) & TF2Econ_GetItemEquipRegionMask(newindex) > 0)
+				if (g_hEnforceCosmeticConflicts.BoolValue)
 				{
-					TF2_RemoveWearable (client, wearable);			
+					if(TF2Econ_GetItemEquipRegionMask(oldindex) & TF2Econ_GetItemEquipRegionMask(newindex) > 0)
+					{
+						TF2_RemoveWearable (client, wearable);			
+					}
 				}
 			}
 		}
@@ -1880,6 +2087,16 @@ public int GiveWeaponCustom(int client, int configindex)
 				{
 					attrVal = float(StringToInt(weaponAttribsArray[i+1]));
 				}
+			case 134:
+				{
+					attrVal = StringToFloat(weaponAttribsArray[i+1]);
+
+					if (attrVal > 900)
+					{
+						SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), 5);
+						attrVal = (GetRandomInt(1,223) + 0.0);
+					}
+				}
 			default:
 				{
 					attrVal = StringToFloat(weaponAttribsArray[i+1]);
@@ -1936,22 +2153,45 @@ public Action Command_ListPlayerItems(int client, int target)
 	return Plugin_Handled;
 }
 
-public Action Command_Clone(int client, int target)
+public Action Command_Clone(int client, int source)
 {
+	g_iHasPermItems[client] = 0;
+	g_iPermClass[client] = -1;
 	TF2_RemoveAllWearables(client);
-	CloneWeapons(client, target);	
-	CloneWearables(client, target, "tf_wearable", "CTFWearable");	
+	CloneWeapons(client, source);	
+	CloneWearables(client, source, "tf_wearable", "CTFWearable");	
+	return Plugin_Handled;
+}
+
+public Action Command_ClonePermanent(int client, int source)
+{
+	g_iHasPermItems[client] = 0;
+	g_iPermClass[client] = -1;
+	TF2_RemoveAllWearables(client);
+	CloneWeaponsPermanent(client, source);	
+	CloneWearablesPermanent(client, source, "tf_wearable", "CTFWearable");	
 	return Plugin_Handled;
 }
 
 public Action Command_CloneOthers(int target, int source)
 {
+	g_iHasPermItems[target] = 0;
+	g_iPermClass[target] = -1;
 	TF2_RemoveAllWearables(target);
 	CloneWeapons(target, source);	
 	CloneWearables(target, source, "tf_wearable", "CTFWearable");	
 	return Plugin_Handled;
 }
 
+public Action Command_CloneOthersPermanent(int target, int source)
+{
+	g_iHasPermItems[target] = 0;
+	g_iPermClass[target] = -1;
+	TF2_RemoveAllWearables(target);
+	CloneWeaponsPermanent(target, source);	
+	CloneWearablesPermanent(target, source, "tf_wearable", "CTFWearable");	
+	return Plugin_Handled;
+}
 stock Action ListWeapons(int client, int target)
 {
 	if (IsValidClient(target))
@@ -2005,27 +2245,24 @@ stock Action ListWeapons(int client, int target)
 				{
 					warpaint = TF2Attrib_GetValue(pAttrib);
 				}
-				else
+				else if (warpaint < 1)
 				{
 					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
 				}
-				
-				if (warpaint < 0)
+				else if (warpaint < 1)
 				{
-					warpaint = 0.0;
-				}
-
-				Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
-				if (IsValidAddress(view_as<Address>(pAttrib3)))
-				{
-					float rawaustralium = TF2Attrib_GetValue(pAttrib3);
-					char ConvertEffect[32];
-					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
-					warpaint = view_as<float>(StringToInt(ConvertEffect));	
-				}
-				else
-				{
-					warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);				
+					Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
+					if (IsValidAddress(view_as<Address>(pAttrib3)))
+					{
+						float rawaustralium = TF2Attrib_GetValue(pAttrib3);
+						char ConvertEffect[32];
+						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
+						warpaint = view_as<float>(StringToInt(ConvertEffect));
+					}
+					else if (warpaint < 1)
+					{
+						warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);
+					}
 				}
 				
 				Address pAttrib2 = TF2Attrib_GetByDefIndex(weapon, 134);
@@ -2084,7 +2321,6 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 						char ConvertEffect[32];
 						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
 						effect = StringToInt(ConvertEffect);
-						PrintToChat(client,"hello there! effect: %i", effect);
 					}
 					else
 					{
@@ -2164,6 +2400,7 @@ stock Action CloneWeapons(int client, int target)
 			{
 				float warpaint = 0.0;
 				int effect = 0;
+				int paint = 0;				
 				int index = GetEntProp(ent, Prop_Send, "m_iItemDefinitionIndex");
 				int weapon = GetPlayerWeaponSlot(target, slot);
 
@@ -2172,27 +2409,24 @@ stock Action CloneWeapons(int client, int target)
 				{
 					warpaint = TF2Attrib_GetValue(pAttrib);
 				}
-				else
+				else if (warpaint < 1)
 				{
 					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
 				}
-				
-				if (warpaint < 0)
+				else if (warpaint < 1)
 				{
-					warpaint = 0.0;
-				}
-
-				Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
-				if (IsValidAddress(view_as<Address>(pAttrib3)))
-				{
-					float rawaustralium = TF2Attrib_GetValue(pAttrib3);
-					char ConvertEffect[32];
-					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
-					warpaint = view_as<float>(StringToInt(ConvertEffect));	
-				}
-				else
-				{
-					warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);				
+					Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
+					if (IsValidAddress(view_as<Address>(pAttrib3)))
+					{
+						float rawaustralium = TF2Attrib_GetValue(pAttrib3);
+						char ConvertEffect[32];
+						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
+						warpaint = view_as<float>(StringToInt(ConvertEffect));
+					}
+					else if (warpaint < 1)
+					{
+						warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);
+					}
 				}
 				
 				Address pAttrib2 = TF2Attrib_GetByDefIndex(weapon, 134);
@@ -2207,11 +2441,115 @@ stock Action CloneWeapons(int client, int target)
 				{
 					effect = view_as<int>(TF2_GetRuntimeAttribValue(weapon, 134));				
 				}
-				
+
 				if (effect < 0)
 				{
 					effect = 0;
 				}
+				
+				EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect), paint);	
+			}
+		}
+	}
+}
+
+stock Action CloneWeaponsPermanent(int client, int target)
+{
+	if (IsValidClient(target))
+	{
+		for (int slot = 0; slot < 6; slot++)
+		{
+			int ent = GetPlayerWeaponSlot(target, slot);
+			if (slot == 1 && ent == -1)
+			{
+				if (TF2_GetPlayerClass(target) == TFClass_DemoMan)
+				{
+					int iEntity = -1;
+					while ((iEntity = FindEntityByClassname(iEntity, "tf_wearable_demoshield")) != -1)
+					{
+						if (target == GetEntPropEnt(iEntity, Prop_Data, "m_hOwnerEntity"))
+						{
+							int index = GetEntProp(iEntity, Prop_Send, "m_iItemDefinitionIndex");
+							EquipItemByItemIndex(client, index);								
+						}
+					}
+				}
+				if (TF2_GetPlayerClass(target) == TFClass_Sniper)
+				{
+					int iEntity2 = -1;
+					while ((iEntity2 = FindEntityByClassname(iEntity2, "tf_wearable_razorback")) != -1)
+					{
+						if (target == GetEntPropEnt(iEntity2, Prop_Data, "m_hOwnerEntity"))
+						{
+							int index = GetEntProp(iEntity2, Prop_Send, "m_iItemDefinitionIndex");
+							EquipItemByItemIndex(client, index);								
+						}
+					}
+				}
+			}
+
+			if (ent != -1)
+			{
+				float warpaint = 0.0;
+				int effect = 0;
+				int paint = 0;				
+				int index = GetEntProp(ent, Prop_Send, "m_iItemDefinitionIndex");
+				int weapon = GetPlayerWeaponSlot(target, slot);
+
+				Address pAttrib = TF2Attrib_GetByDefIndex(weapon, 834);
+				if (IsValidAddress(view_as<Address>(pAttrib)))
+				{
+					warpaint = TF2Attrib_GetValue(pAttrib);
+				}
+				else if (warpaint < 1)
+				{
+					warpaint = TF2_GetRuntimeAttribValue(weapon, 834);
+				}
+				else if (warpaint < 1)
+				{
+					Address pAttrib3 = TF2Attrib_GetByDefIndex(weapon, 2027);
+					if (IsValidAddress(view_as<Address>(pAttrib3)))
+					{
+						float rawaustralium = TF2Attrib_GetValue(pAttrib3);
+						char ConvertEffect[32];
+						Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", rawaustralium);
+						warpaint = view_as<float>(StringToInt(ConvertEffect));
+					}
+					else if (warpaint < 1)
+					{
+						warpaint = TF2_GetRuntimeAttribValue(weapon, 2027);
+					}
+				}
+				
+				Address pAttrib2 = TF2Attrib_GetByDefIndex(weapon, 134);
+				if (IsValidAddress(view_as<Address>(pAttrib2)))
+				{
+					float raweffect = TF2Attrib_GetValue(pAttrib2);
+					char ConvertEffect[32];
+					Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
+					effect = StringToInt(ConvertEffect);	
+				}
+				else
+				{
+					effect = view_as<int>(TF2_GetRuntimeAttribValue(weapon, 134));				
+				}
+
+				if (effect < 0)
+				{
+					effect = 0;
+				}
+				
+				g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
+				if (g_iHasPermItems[client] < 0)
+				{
+					g_iHasPermItems[client] = 0;
+				}
+				g_iHasPermItems[client] = g_iHasPermItems[client] +1;
+				int i = g_iHasPermItems[client];
+				ga_iPermItems[client][i][0] = index;
+				ga_iPermItems[client][i][1] = view_as<int>(warpaint);
+				ga_iPermItems[client][i][2] = effect;
+				ga_iPermItems[client][i][3] = paint;	
 				
 				EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect));	
 			}
@@ -2277,10 +2615,94 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 						{
 							effect = 0;
 						}
+						
 						if (paint < 0)
 						{
 							paint = 0;
 						}
+
+						EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect), paint);
+					}
+				}
+			}
+		}
+	}
+}
+
+stock Action CloneWearablesPermanent(int client, int target, char[] classname, char[] networkclass)
+{
+	if (IsPlayerAlive(target))
+	{
+		int edict = MaxClients+1;
+		while((edict = FindEntityByClassname(edict, classname)) != -1)
+		{
+			char netclass[32];
+			if (GetEntityNetClass(edict, netclass, sizeof(netclass)) && StrEqual(netclass, networkclass))
+			{
+				if (GetEntPropEnt(edict, Prop_Send, "m_hOwnerEntity") == target)
+				{
+					int index = GetEntProp(edict, Prop_Send, "m_iItemDefinitionIndex");
+					if (index != -1 && index < 65535)
+					{
+						float rawpaint = 0.0;
+						int warpaint = 0;
+						int effect = 0;
+						int paint = 0;
+
+						char itemname[64];
+						TF2Econ_GetItemName(index, itemname, sizeof(itemname));
+						
+						Address pAttrib = TF2Attrib_GetByDefIndex(edict, 134);
+						if (IsValidAddress(view_as<Address>(pAttrib)))
+						{
+							float raweffect = TF2Attrib_GetValue(pAttrib);
+							char ConvertEffect[32];
+							Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
+							effect = StringToInt(ConvertEffect);	
+						}
+						else
+						{
+							float raweffect = TF2_GetRuntimeAttribValue(edict, 134);
+							char ConvertEffect[32];
+							Format(ConvertEffect, sizeof(ConvertEffect),"%0.f", raweffect);
+							effect = StringToInt(ConvertEffect);
+						}
+						
+						Address pAttrib2 = TF2Attrib_GetByDefIndex(edict, 142);
+						if (IsValidAddress(view_as<Address>(pAttrib2)))
+						{
+							rawpaint = TF2Attrib_GetValue(pAttrib2);
+						}					
+						else
+						{
+							rawpaint = TF2_GetRuntimeAttribValue(edict, 142);
+						}
+						
+						if (rawpaint > 0)
+						{
+							paint = Translate_Paint(rawpaint);
+						}
+						
+						if (effect < 0)
+						{
+							effect = 0;
+						}
+						if (paint < 0)
+						{
+							paint = 0;
+						}
+
+						g_iPermClass[client] = view_as<int>(TF2_GetPlayerClass(client));
+						if (g_iHasPermItems[client] < 0)
+						{
+							g_iHasPermItems[client] = 0;
+						}
+						g_iHasPermItems[client] = g_iHasPermItems[client] +1;
+						int i = g_iHasPermItems[client];
+						ga_iPermItems[client][i][0] = index;
+						ga_iPermItems[client][i][1] = warpaint;
+						ga_iPermItems[client][i][2] = effect;
+						ga_iPermItems[client][i][3] = paint;	
 
 						EquipItemByItemIndex(client, index, view_as<int>(warpaint), view_as<int>(effect), paint);
 					}
@@ -2297,6 +2719,7 @@ stock bool IsValidAddress(Address pAddress)
 	return false;
 	return unsigned_compare(view_as<int>(pAddress), view_as<int>(Address_MinimumValid)) >= 0;
 }
+
 stock int unsigned_compare(int a, int b) 
 {
 	if (a == b)
@@ -2310,13 +2733,20 @@ stock Action TF2_RemoveAllWearables(int client)
 {
 	RemoveWearable(client, "tf_wearable", "CTFWearable");
 	RemoveWearable(client, "tf_powerup_bottle", "CTFPowerupBottle");
-	RemoveSpellbook(client);	
+	RemoveSpellbook(client);
+	RemoveGrapplingHook(client);
 }
 
 stock Action RemoveWearable(int client, char[] classname, char[] networkclass)
 {
 	if (IsPlayerAlive(client))
 	{
+		SetVariantString("");
+		AcceptEntityInput(client, "SetCustomModel");
+		SetEntProp(client, Prop_Send, "m_bCustomModelRotates", 0);
+		SetVariantString("ParticleEffectStop");
+		AcceptEntityInput(client, "DispatchEffect");
+
 		int edict = MaxClients+1;
 		while((edict = FindEntityByClassname(edict, classname)) != -1)
 		{
@@ -2382,6 +2812,32 @@ stock Action RemoveSpellbook(int client)
 		int entity = -1;
 		
 		while((entity = FindEntityByClassname(entity, "tf_weapon_spellbook")) != -1)
+		{
+			int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+			
+			if (owner != client)
+			{
+				continue;
+			}
+			
+			int wearable = GetEntPropEnt(entity, Prop_Send, "m_hExtraWearable");
+			if (wearable != -1)
+			{
+				AcceptEntityInput(wearable, "kill");
+			}
+			
+			RemovePlayerItem(client, entity);
+		}		
+	}
+}
+
+stock Action RemoveGrapplingHook(int client)
+{
+	if (IsPlayerAlive(client))
+	{
+		int entity = -1;
+		
+		while((entity = FindEntityByClassname(entity, "tf_weapon_grapplinghook")) != -1)
 		{
 			int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 			
@@ -2550,4 +3006,189 @@ float TF2_GetRuntimeAttribValue(int entity, int attribute)
 	}
 
 	return 0.00;
+}
+
+public Action Command_StripAll(int client, int args)
+{
+	char arg1[32];
+	if (args < 1)
+	{
+		arg1 = "@me";
+	}
+	else GetCmdArg(1, arg1, sizeof(arg1));
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	bool tn_is_ml;
+
+	if ((target_count = ProcessTargetString(
+					arg1,
+					client,
+					target_list,
+					MAXPLAYERS,
+					COMMAND_FILTER_ALIVE|(args < 1 ? COMMAND_FILTER_NO_IMMUNITY : 0),
+					target_name,
+					sizeof(target_name),
+					tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	for (int i = 0; i < target_count; i++)
+	{
+		TF2_RemoveAllWearables(target_list[i]);
+		
+		SetVariantString("");
+		AcceptEntityInput(target_list[i], "SetCustomModel");
+		SetEntProp(target_list[i], Prop_Send, "m_bCustomModelRotates", 0);
+		SetVariantString("ParticleEffectStop");
+		AcceptEntityInput(target_list[i], "DispatchEffect");
+		
+		g_iHasPermItems[target_list[i]] = 0;
+		
+		g_iPermClass[target_list[i]] = -1;		
+
+		for (int j = 0; j < 3; j++)
+		{
+			TF2_RemoveWeaponSlot(target_list[i], j);
+			int idx = GetDefaultWeaponIndex(TF2_GetPlayerClass(target_list[i]), j);
+			EquipItemByItemIndex(target_list[i], idx);
+		}
+
+		ReplyToCommand(client, "[SM] Removed items, replaced weapons, reset perm status on player %N", target_list[i]);	
+	}
+
+	return Plugin_Handled;
+}
+
+public Action Command_StripItems(int client, int args)
+{
+	char arg1[32];
+	if (args < 1)
+	{
+		arg1 = "@me";
+	}
+	else GetCmdArg(1, arg1, sizeof(arg1));
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	bool tn_is_ml;
+
+	if ((target_count = ProcessTargetString(
+					arg1,
+					client,
+					target_list,
+					MAXPLAYERS,
+					COMMAND_FILTER_ALIVE|(args < 1 ? COMMAND_FILTER_NO_IMMUNITY : 0),
+					target_name,
+					sizeof(target_name),
+					tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	for (int i = 0; i < target_count; i++)
+	{
+		TF2_RemoveAllWearables(target_list[i]);
+		
+		SetVariantString("");
+		AcceptEntityInput(target_list[i], "SetCustomModel");
+		SetEntProp(target_list[i], Prop_Send, "m_bCustomModelRotates", 0);
+		SetVariantString("ParticleEffectStop");
+		AcceptEntityInput(target_list[i], "DispatchEffect");
+
+		ReplyToCommand(client, "[SM] Removed items from player %N", target_list[i]);	
+	}
+
+	return Plugin_Handled;
+}
+
+public Action Command_StripWeapons(int client, int args)
+{
+	char arg1[32];
+	if (args < 1)
+	{
+		arg1 = "@me";
+	}
+	else GetCmdArg(1, arg1, sizeof(arg1));
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	bool tn_is_ml;
+
+	if ((target_count = ProcessTargetString(
+					arg1,
+					client,
+					target_list,
+					MAXPLAYERS,
+					COMMAND_FILTER_ALIVE|(args < 1 ? COMMAND_FILTER_NO_IMMUNITY : 0),
+					target_name,
+					sizeof(target_name),
+					tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	for (int i = 0; i < target_count; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			TF2_RemoveWeaponSlot(target_list[i], j);
+			int idx = GetDefaultWeaponIndex(TF2_GetPlayerClass(target_list[i]), j);
+			EquipItemByItemIndex(target_list[i], idx);
+		}
+
+		ReplyToCommand(client, "[SM] Replaced all weapons on player %N", target_list[i]);	
+	}
+
+	return Plugin_Handled;
+}
+
+stock int GetDefaultWeaponIndex(TFClassType class, int slot)
+{
+	static defweps[TFClassType][3] = {
+		{ -1, -1, -1 },		//Unknown
+		{ 13, 23, 0 },		//Scout
+		{ 14, 16, 3 },		//Sniper
+		{ 18, 10, 6 },		//Soldier
+		{ 19, 20, 1 },		//Demoman
+		{ 17, 29, 8 },		//Medic
+		{ 15, 11, 5 },		//Heavy
+		{ 21, 12, 2 },		//Pyro
+		{ 24, 735, 4 },		//Spy
+		{ 9, 22, 7 }		//Engineer
+	};
+	return defweps[class][slot];
+}
+
+public Action Command_RegeneratePlayer(int client, int args)
+{
+	char arg1[32];
+	if (args < 1)
+	{
+		arg1 = "@me";
+	}
+	else GetCmdArg(1, arg1, sizeof(arg1));
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	bool tn_is_ml;
+
+	if ((target_count = ProcessTargetString(
+					arg1,
+					client,
+					target_list,
+					MAXPLAYERS,
+					COMMAND_FILTER_ALIVE|(args < 1 ? COMMAND_FILTER_NO_IMMUNITY : 0),
+					target_name,
+					sizeof(target_name),
+					tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	for (int i = 0; i < target_count; i++)
+	{
+		TF2_RegeneratePlayer(target_list[i]);
+
+		ReplyToCommand(client, "Regenerated %N", target_list[i]);
+	}
+	
+	return Plugin_Handled;
 }
