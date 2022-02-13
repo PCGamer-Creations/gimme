@@ -4,7 +4,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION "1.12"
+#define PLUGIN_VERSION "1.13"
 
 public const int warpaintedWeps[45] = { 
 	37, 172, 194, 197, 199, 200, 201, 202, 203, 205, 206, 207, 208, 209, 210,
@@ -173,6 +173,8 @@ public Action GivePermItems(Handle timer, int userd)
 		g_iHasPermItems[client] = 0;
 		g_iPermClass[client] = -1;
 	}
+	
+	return Plugin_Handled;	
 }
 
 public APLRes AskPluginLoad2(Handle hMySelf, bool bLate, char[] szError, int iErrMax) 
@@ -277,7 +279,7 @@ public Action Command_GetItem(int client, int args)
 		ReplyToCommand(client, "[SM] Usage: !gimme <index number>");
 		ReplyToCommand(client, "or gimme <index number> <0> <unusual effect number> <paint id>");		
 		ReplyToCommand(client, "or gimme <warpaintable weapon id> <warpaint id>");		
-		ReplyToCommand(client, "examples: !gimmme 205  or  !gimme 666  or  !gimme 205 200"); 
+		ReplyToCommand(client, "examples: !gimme 205  or  !gimme 666  or  !gimme 205 200"); 
 		ReplyToCommand(client, "for list of index numbers type: !index. Paint Ids are 1-29"); 
 
 		return Plugin_Handled; 		
@@ -1094,7 +1096,7 @@ Action Command_Permanent_Items(int client, int args)
 		ReplyToCommand(client, "[SM] Usage: !gimme <index number>");
 		ReplyToCommand(client, "or gimme <index number> <0> <unusual effect number>");		
 		ReplyToCommand(client, "or gimme <warpaintable weapon id> <warpaint id>");		
-		ReplyToCommand(client, "examples: !gimmme 205  or  !gimme 666  or  !gimme 205 200"); 
+		ReplyToCommand(client, "examples: !gimme 205  or  !gimme 666  or  !gimme 205 200"); 
 		ReplyToCommand(client, "for list of index numbers type: !index"); 
 
 		return Plugin_Handled; 		
@@ -1376,6 +1378,9 @@ int Items_CreateNamedItem(int client, int itemindex, const char[] classname, int
 	SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityLevel"), level);
 	SetEntData(newitem, FindSendPropInfo(entclass, "m_iEntityQuality"), quality);
 	SetEntProp(newitem, Prop_Send, "m_bValidatedAttachedEntity", 1);
+	
+	SetEntProp(newitem, Prop_Send, "m_iAccountID", GetSteamAccountID(client));
+	SetEntPropEnt(newitem, Prop_Send, "m_hOwnerEntity", client);
 	
 	if (level > 0)
 	{
@@ -1906,9 +1911,11 @@ bool RemoveConflictWearables(int client, int newindex)
 			}
 		}
 	}
+	
+	return true;
 }
 
-stock int CustomItemsTrieSetup(StringMap trie)
+stock Action CustomItemsTrieSetup(StringMap trie)
 {
 	char strBuffer[256], strBuffer2[256], strBuffer3[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, strBuffer, sizeof(strBuffer), "configs/tf2items.givecustom.txt");
@@ -1949,6 +1956,8 @@ stock int CustomItemsTrieSetup(StringMap trie)
 		}
 	}
 	delete kv;
+	
+	return Plugin_Handled;	
 }
 
 public int GiveWeaponCustom(int client, int configindex)
@@ -2399,6 +2408,8 @@ stock Action ListWeapons(int client, int target)
 			}
 		}
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock Action ListWearables(int client, int target, char[] classname, char[] networkclass)
@@ -2462,6 +2473,8 @@ stock Action ListWearables(int client, int target, char[] classname, char[] netw
 			}
 		}
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock Action CloneWeapons(int client, int target)
@@ -2553,6 +2566,8 @@ stock Action CloneWeapons(int client, int target)
 			}
 		}
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock Action CloneWeaponsPermanent(int client, int target)
@@ -2655,6 +2670,8 @@ stock Action CloneWeaponsPermanent(int client, int target)
 			}
 		}
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock Action CloneWearables(int client, int target, char[] classname, char[] networkclass)
@@ -2717,6 +2734,8 @@ stock Action CloneWearables(int client, int target, char[] classname, char[] net
 			}
 		}
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock Action CloneWearablesPermanent(int client, int target, char[] classname, char[] networkclass)
@@ -2791,6 +2810,8 @@ stock Action CloneWearablesPermanent(int client, int target, char[] classname, c
 			}
 		}
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock bool IsValidAddress(Address pAddress)
@@ -2885,6 +2906,8 @@ stock Action RemoveWearable(int client, char[] classname, char[] networkclass)
 			}
 		}
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock void RemoveAllWeapons(int client)
@@ -2952,6 +2975,8 @@ stock Action RemoveSpellbook(int client)
 			RemovePlayerItem(client, entity);
 		}		
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock Action RemoveGrapplingHook(int client)
@@ -2978,6 +3003,8 @@ stock Action RemoveGrapplingHook(int client)
 			RemovePlayerItem(client, entity);
 		}		
 	}
+	
+	return Plugin_Handled;	
 }
 
 stock int Translate_Paint(float rawpaint) 
@@ -3266,7 +3293,7 @@ public Action Command_StripWeapons(int client, int args)
 
 stock int GetDefaultWeaponIndex(TFClassType class, int slot)
 {
-	static defweps[TFClassType][3] = {
+	static int defweps[10][3] = {
 		{ -1, -1, -1 },		//Unknown
 		{ 13, 23, 0 },		//Scout
 		{ 14, 16, 3 },		//Sniper
